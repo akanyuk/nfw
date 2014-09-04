@@ -153,7 +153,7 @@ function _active_field_bootstrap($params) {
 	ob_start();
 	?>
 	<div id="<?php echo $id ? $id : $name?>" class="form-group">
-		<label for="<?php echo $name?>" class="col-md-<?php echo $labelCols?> control-label"><?php echo $required ? '<strong>'.$desc.'</strong>' : $desc?></label>
+		<label for="<?php echo $name?>" class="col-md-<?php echo $labelCols?> control-label"><?php echo $required ? '<strong>'.$labelDesc.'</strong>' : $labelDesc?></label>
 		<div class="col-md-<?php echo $inputCols?>">
 	<?php if ($type == 'date'): 
 			NFW::i()->registerResource('jquery.activeForm/bootstrap-datetimepicker.min.js');
