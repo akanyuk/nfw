@@ -112,7 +112,7 @@
 			if (typeof($(this).attr('icon')) !== 'undefined') {
 				$(this).find('.ui-button-text').html('&nbsp;');
 				$(this).find('.ui-icon').css({'left': '0'});
-				$(this).find('.ui-button-text').css({'padding': '2px 7px'});
+				$(this).find('.ui-button-text').css({'padding': '2px 7px 2px 6px'});
 			}
 			else {
 				$(this).find('.ui-button-text').css({ 'padding': '0.1em 0.5em'});

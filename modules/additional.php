@@ -34,6 +34,7 @@ abstract class additional extends active_record {
 		foreach ($this->attributes as $varname=>&$a) {
 			$a['type'] = isset($a['type']) ? $a['type'] : 'str'; 
 			$a['unique'] = isset($a['unique']) ? $a['unique'] : false;
+			$a['required'] = isset($a['required']) ? $a['required'] : false;
 				
 			if ($a['type'] == 'group') {
 				foreach ($a['childs'] as &$c) {
@@ -254,26 +255,27 @@ abstract class additional extends active_record {
 
 	public function formatVisibleValue(&$value, $attribute) {
 		// Generate 'visible_value'
-		if ($attribute['type'] != 'group') {
-			return parent::formatVisibleValue($value['value'], $attribute);
-		}
-		
-		$value['childs'] = NFW::i()->unserializeArray($value['value']);
-		$implode_me = $implode_me_short = array();
-		foreach ($value['childs'] as $child_varname=>$child_value) {
-			if ($child_value) {
-				$implode_me[] = parent::formatVisibleValue($child_value, $attribute['childs'][$child_varname]);
-				
-				if (isset($attribute['childs'][$child_varname]['visible_value_short']) && isset($attribute['childs'][$child_varname]['visible_value_short'])) {
-					$implode_me_short[] = parent::formatVisibleValue($child_value, $attribute['childs'][$child_varname]);
+		if ($attribute['type'] == 'group') {
+			$value['childs'] = NFW::i()->unserializeArray($value['value']);
+			$implode_me = $implode_me_short = array();
+			foreach ($value['childs'] as $child_varname=>$child_value) {
+				if ($child_value) {
+					$implode_me[] = parent::formatVisibleValue($child_value, $attribute['childs'][$child_varname]);
+					
+					if (isset($attribute['childs'][$child_varname]['visible_value_short']) && isset($attribute['childs'][$child_varname]['visible_value_short'])) {
+						$implode_me_short[] = parent::formatVisibleValue($child_value, $attribute['childs'][$child_varname]);
+					}
 				}
 			}
+	
+			// Сокращенное значение (например для банковских реквизитов - только наименование банка и Р/С)
+			$value['visible_value_short'] = empty($implode_me_short) ? false : implode($attribute['implode_by'], $implode_me_short);
+			 
+			return implode($attribute['implode_by'], $implode_me);
 		}
-
-		// Сокращенное значение (например для банковских реквизитов - только наименование банка и Р/С)
-		$value['visible_value_short'] = empty($implode_me_short) ? false : implode($attribute['implode_by'], $implode_me_short);
-		 
-		return implode($attribute['implode_by'], $implode_me);
+		else {
+			return parent::formatVisibleValue($value['value'], $attribute);
+		}
 	}
 		
 	function actionAdmin($params = array()) {
