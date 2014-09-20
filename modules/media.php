@@ -628,7 +628,10 @@ class media extends active_record {
 		}
 		 
 		logs::write('ID='.$this->record['id'], self::LOGS_MEDIA_UPLOAD, $owner_id.':'.$owner_class);
-		NFW::i()->renderJSON(array('result' => 'success'));
+		NFW::i()->renderJSON(array(
+			'result' => 'success',
+			'url' => $this->record['url']			
+		));
 	}
 	
 	function actionReload() {

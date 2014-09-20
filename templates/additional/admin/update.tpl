@@ -14,7 +14,7 @@
 		<div class="icon1">
 			<input rel="is-active" type="checkbox" <?php if ($attribute['multiple']) echo 'checked="checked"'?> id="newvalue-%INDEX%" title="Активно" />				
 		</div>
-		<div class="v" <?php echo $attribute['type'] == 'combobox' ? 'style="position: relative; top: -4px;"' : ''?>>
+		<div class="v">
 			<?php if ($attribute['type'] == 'date'): ?>
 				<input rel="new-datepicker" type="text" name="values[newvalue-%INDEX%]" class="datepicker" maxlength="10" <?php echo $default_value ? 'value="'.$default_value.'"' : ''?> />
 			<?php elseif ($attribute['type'] == 'select'): ?>
@@ -200,7 +200,7 @@ $(document).ready(function(){
 				o.autocomplete('search', '');
 			}).removeAttr('rel');
 
-			$('<div id="toggle" style="position: relative; top: 4px; width: 15px; height: 15px;"></div>').button({ icons: { primary: "ui-icon-triangle-1-s" }, text: false }).removeClass('ui-corner-all').addClass('ui-corner-right ui-button-icon').click(function(){
+			$('<div id="toggle" style="width: 15px; height: 15px;"></div>').button({ icons: { primary: "ui-icon-triangle-1-s" }, text: false }).removeClass('ui-corner-all').addClass('ui-corner-right ui-button-icon').click(function(){
 				o.autocomplete('search', '');
 			}).insertAfter(o);
 		});

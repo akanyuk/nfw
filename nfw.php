@@ -683,7 +683,7 @@ class NFW {
 				$message = '<html><script type="text/javascript">alert("'.$message.'");</script></html>';
 				break;
 			case 'active_form':
-				NFW::i()->renderJSON(array('result' => 'error', 'errors' => array('general' => $message)));
+				NFW::i()->renderJSON(array('result' => 'error', 'errors' => array('general' => $message), 'last_message' => $message));
 				break;
 			case 'error-page':
 				NFW::i()->assign('page', array(

@@ -454,7 +454,7 @@ abstract class additional extends active_record {
 		 	'remove_records' => $remove_records,
 		));
 		return false;
-*/		
+*/
 
 		// Start updating
 		$is_updated = false;
