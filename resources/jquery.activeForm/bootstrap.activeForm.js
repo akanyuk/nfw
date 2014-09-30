@@ -20,20 +20,23 @@ $.fn.activeForm = function(options) {
 	// Datepicker
 	form.find('input[rel="datepicker"]').each(function(){
 		var dp = $(this);
+		
 		var container = $(this).closest('div');
 		var name = $(this).attr('name');
 		var sFormat = 'dd.mm.yyyy';
 		var sPlaceholder = 'dd.mm.yyyy';
 		var iMinView = 2;
+		var bWithTime = false;
 		
 		if ($(this).attr('withTime') == '1') {
 			sFormat = 'dd.mm.yyyy hh:ii';
 			sPlaceholder = 'dd.mm.yyyy hh:ss';
 			iMinView = 0;
+			bWithTime = true;
 		}
-		
+
 		dp.attr({ 'readonly': '1', 'placeholder': sPlaceholder }).removeAttr('name');
-		container.append('<input name="' + name + '" value="0" type="hidden" />');
+		container.append('<input name="' + name + '" value="' + $(this).attr('unixTimestamp') + '" type="hidden" />');
 		
 		dp.datetimepicker({ 
 			'autoclose': true,

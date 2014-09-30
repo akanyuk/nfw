@@ -161,7 +161,7 @@ function _active_field_bootstrap($params) {
 			NFW::i()->registerResource('jquery.activeForm/bootstrap-datetimepicker.min.css');
 	?>
 	    <div language="<?php echo NFW::i()->user['language']?>">
-	    	<input rel="datepicker" type="text" class="form-control" style="display: inline; width: auto;" name="<?php echo $name?>" value="<?php echo $value ? date('d.m.Y', $value) : ''?>" withTime="<?php echo $withTime?>" /><span id="set-date" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-calendar"></span></span><span id="remove-date" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-remove"></span></span>
+	    	<input rel="datepicker" type="text" class="form-control" style="display: inline; width: auto;" name="<?php echo $name?>" value="<?php echo $value ? date('d.m.Y', $value) : ''?>" unixTimestamp="<?php echo intval($value)?>" withTime="<?php echo $withTime?>" /><span id="set-date" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-calendar"></span></span><span id="remove-date" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-remove"></span></span>
 	    </div>
 	<?php elseif ($type == 'select'): ?>
 			<select name="<?php echo $name?>" class="form-control<?php echo $class ? ' '.$class : ''?>"><?php foreach ($options as $o) { ?>
