@@ -447,14 +447,6 @@ abstract class additional extends active_record {
 				}
 			}
 		}
-/*
-		FB::log(array(
-		 	'create_records' => $create_records,
-		 	'activate_records' => $activate_records,
-		 	'remove_records' => $remove_records,
-		));
-		return false;
-*/
 
 		// Start updating
 		$is_updated = false;

@@ -626,12 +626,15 @@ class NFW {
 		}
 	     
 		if (defined('NFW_LOG_GENERATED_TIME') && class_exists('FB')) {
-		    // Calculate script generation time
+			// Calculate script generation time
+			FB::setOptions(array('includeLineNumbers' => false));
 		    FB::info('Generated in '.sprintf('%.3f', $this->microtime() - $this->_start_execution).' seconds, '.$this->db->get_num_queries().' queries executed');
 		}
 	    
 		if (defined('NFW_LOG_QUERIES') && class_exists('FB')) {
+			FB::setOptions(array('includeLineNumbers' => false));
 			FB::info('Executed queries:');
+			
 			foreach ($this->db->saved_queries as $q) {
 				FB::info($q[0], $q[1].' sec');
 			}
@@ -700,17 +703,20 @@ class NFW {
 		}
 
 		if (defined('NFW_LOG_GENERATED_TIME') && class_exists('FB')) {
-		    // Calculate script generation time
-		    FB::info('Generated in '.sprintf('%.3f', $this->microtime() - $this->_start_execution).' seconds'.($this->db ? ', '.$this->db->get_num_queries().' queries executed' : '.'));
+			// Calculate script generation time
+			FB::setOptions(array('includeLineNumbers' => false));
+		    FB::info('Generated in '.sprintf('%.3f', $this->microtime() - $this->_start_execution).' seconds, '.$this->db->get_num_queries().' queries executed');
 		}
-		
-		if (defined('NFW_LOG_QUERIES')) {
+	    
+		if (defined('NFW_LOG_QUERIES') && class_exists('FB')) {
+			FB::setOptions(array('includeLineNumbers' => false));
 			FB::info('Executed queries:');
+			
 			foreach ($this->db->saved_queries as $q) {
 				FB::info($q[0], $q[1].' sec');
 			}
 		}
-		
+				
 	    if ($this->db) $this->db->close();
 	    
 	    exit ($message);
@@ -718,6 +724,7 @@ class NFW {
 	
 	function errorHandler($error_number, $message, $file, $line, $db_error = false) {
 		if (class_exists('FB')) {
+			FB::setOptions(array('includeLineNumbers' => false));
 			FB::group('Error: '.$message,array('Collapsed' => true,'Color' => '#FF0000'));
 			FB::info($file, 'File');
 			FB::info($line, 'Line');
@@ -729,7 +736,7 @@ class NFW {
 			}
 			FB::groupEnd();
 		}
-	
+				
 		return true;
 	}	
 }

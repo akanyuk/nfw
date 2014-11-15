@@ -194,9 +194,12 @@ abstract class base_module {
 		if (!$full_path = NFW::i()->findTemplatePath($filename, $class, $controler)) return false;
     	 
 		// Assign template vars
-		foreach($template_vars as $varname=>$value) {
-			NFW::i()->assign($varname, $value);
+		if (is_array($template_vars)) {
+			foreach($template_vars as $varname=>$value) {
+				NFW::i()->assign($varname, $value);
+			}
 		}
+		
 		return NFW::i()->fetch($full_path);
     }
 }

@@ -9,7 +9,7 @@
 $(document).ready(function(){
 	/** 
 	 * Media Form
-	 * @date: 2014.06.03
+	 * @date: 2014.11.10
 	 */
 
 	// Set session cookie
@@ -156,12 +156,16 @@ $(document).ready(function(){
 		}
 	});
 
+	form.bind('unload', function(){
+		$.removeCookie('<?php echo $session_id?>', { path: '/' });
+	});
+	
 	<?php if ($owner_id && (!isset($lazy_load) || !$lazy_load) ): ?>
 	form.trigger('load');
 	<?php endif; ?>
 
 	$(window).on('beforeunload', function() {
-		$.removeCookie('<?php echo $session_id?>', { path: '/' })
+		form.trigger('unload');
 	});
 });
 </script>

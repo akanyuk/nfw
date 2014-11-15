@@ -182,8 +182,11 @@ function _active_field_bootstrap($params) {
 	<?php else: ?>
 			<input type="text" name="<?php echo $name?>" class="form-control <?php echo $class?>"<?php echo $placeholder.$maxlength?> value="<?php echo htmlspecialchars($value)?>" />
 	<?php endif; ?>
-			<span class="help-block"></span>
 		</div>
+	</div>
+	<div id="<?php echo $id ? $id : $name?>" class="form-group">
+		<div class="col-md-<?php echo $labelCols?>">&nbsp;</div>
+		<div><span class="help-block"></span></div>
 	</div>
 <?php 
 	return ob_get_clean();
