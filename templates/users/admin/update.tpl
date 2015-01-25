@@ -18,7 +18,7 @@ $(document).ready(function(){
 	var up_form = $('form[id="update-password"]');
 	var up_dialog = $('div[id="update-password-dialog"]');
 	up_dialog.dialog({
-		autoOpen: false,draggable: true, modal: true, resizable: false,
+		autoOpen: false, draggable:true, modal:true, resizable:false,
 		title: "<?php echo $Module->lang['Update_password']?>",
 		width: 'auto',height: 'auto',
 		buttons: { '<?php echo $Module->lang['Save']?>': function() {

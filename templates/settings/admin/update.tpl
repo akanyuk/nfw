@@ -35,9 +35,12 @@ $(document).ready(function(){
  	 	handle: '.icon'
 	});
 
- 	$(document).on('click', '*[rel="remove-values-record"]', function(){
+ 	$(document).on('click', '*[rel="remove-values-record"]', function(event){
  	 	if ($(this).closest('div[id="record"]').attr('rel') == 'update') {
- 	 		if (!confirm('Удалить параметр?')) return false;
+ 	 		if (!confirm('Удалить параметр?')) {
+ 	 			event.preventDefault();
+ 	 	 		return false;
+ 	 		}
  	 	}
 
  	 	$(this).closest('div[id="record"]').remove();

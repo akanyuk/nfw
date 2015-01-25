@@ -125,7 +125,7 @@
 $(document).ready(function(){
 	var d = $('div[id="ca-update-dialog"]');
 	d.dialog({ 
-		autoOpen: true, draggable: false, modal: true, resizable: false,
+		autoOpen: true, draggable:true, modal:true, resizable:false,
 		title: 'Редактировать "<?php echo (isset($attribute['longdesc']) && $attribute['longdesc']) ? $attribute['longdesc'] : $attribute['desc']?>"',
 		width: 700, height: $(window).height() - 50,
 		buttons: { 'Сохранить': function() {

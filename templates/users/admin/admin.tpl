@@ -68,7 +68,7 @@ $(document).ready(function(){
 
 	// Action 'insert
 	$('div[id="users-insert-dialog"]').dialog({
-		autoOpen: false, draggable: false, modal: true, resizable: false,
+		autoOpen: false, draggable:true, modal:true, resizable:false,
 		title: 'Новый пользователь',
 		width: 'auto',height: 'auto',
 		buttons: { 'Сохранить': function() {

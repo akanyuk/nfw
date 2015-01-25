@@ -39,7 +39,7 @@ switch ($this->cfg['db']['type']) {
 		break;
 
 	default:
-		exit('\''.NFW::i()->cfg['db']['type'].'\' is not a valid database type. Please check settings in config.php.');
+		require dirname(__FILE__).'/dummy.php';
 		break;
 }
 

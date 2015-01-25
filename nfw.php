@@ -6,7 +6,7 @@ set_error_handler('_errorHandler');
 set_exception_handler('_exceptionHandler');
 
 // For PHP above 5.3.0
-date_default_timezone_set('Etc/GMT-4');
+date_default_timezone_set('Etc/GMT-3');
 
 // Turn off magic_quotes_runtime
 if (get_magic_quotes_runtime())
@@ -120,6 +120,11 @@ class NFW {
 			// Load DB abstraction layer and connect
 			require NFW_ROOT.'dblayer/common_db.php';
 			$this->db = new DBLayer($this->cfg['db']['host'], $this->cfg['db']['username'], $this->cfg['db']['password'], $this->cfg['db']['name'], $this->cfg['db']['prefix'], $this->cfg['db']['p_connect']);
+		}
+		else {
+			$this->cfg['db']['type'] = 'dummy';
+			require NFW_ROOT.'dblayer/common_db.php';
+			$this->db = new DBLayer();
 		}
 		
 		// base_path, absolute _path
