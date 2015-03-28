@@ -171,9 +171,6 @@ $(document).ready(function(){
 </script>
 <style>
 	<?php if (NFW::i()->getUI() == 'bootstrap'): ?>
-		form#<?php echo $session_id?> div.uploader { width: auto; }
-		form#<?php echo $session_id?> div.uploader span.filename { width: 120px; }
-
 		form#<?php echo $session_id?> .alert-cond { padding: 10px; }
 		form#<?php echo $session_id?> .alert-cond P { font-size: 12px; line-height: 13px; }
 		
@@ -235,7 +232,7 @@ $(document).ready(function(){
 	</table>
 </form>
 <?php elseif (NFW::i()->getUI() == 'bootstrap'): ?>
-<form id="<?php echo $session_id?>" class="form-horizontal" action="<?php echo NFW::i()->base_path.'media.php?action=upload'?>" enctype="multipart/form-data">
+<form id="<?php echo $session_id?>" class="form-horizontal" action="<?php echo NFW::i()->base_path.'media.php?action=upload'?>" enctype="multipart/form-data"><fieldset>
 	<input type="hidden" name="owner_id" value="<?php echo $owner_id?>" />
 	<input type="hidden" name="owner_class" value="<?php echo $owner_class?>" />
 	<input type="hidden" name="MAX_FILE_SIZE" value="<?php echo $MAX_FILE_SIZE?>" />
@@ -245,10 +242,12 @@ $(document).ready(function(){
 			<input type="file" name="local_file" />
 			<span class="help-block"></span>
 		</div>
-		<div class="col-md-5 alert alert-warning alert-cond">
-			<p style="font-size: 80%;"><?php echo $lang_media['MaxFileSize']?>: <strong><?php echo number_format($MAX_FILE_SIZE / 1048576, 2, '.', ' ')?>Mb</strong></p>
-			<p style="font-size: 80%;"><?php echo $lang_media['MaxSessionSize']?>: <strong><?php echo number_format($MAX_SESSION_SIZE / 1048576, 2, '.', ' ')?>Mb</strong></p>
-			<p style="font-size: 80%;"><?php echo $lang_media['CurrentSessionSize']?>: <strong><span id="session_size">0</span>Mb</strong></p>
+		<div class="col-md-5">
+			<div class="alert alert-warning alert-cond">
+				<p style="font-size: 80%;"><?php echo $lang_media['MaxFileSize']?>: <strong><?php echo number_format($MAX_FILE_SIZE / 1048576, 2, '.', ' ')?>Mb</strong></p>
+				<p style="font-size: 80%;"><?php echo $lang_media['MaxSessionSize']?>: <strong><?php echo number_format($MAX_SESSION_SIZE / 1048576, 2, '.', ' ')?>Mb</strong></p>
+				<p style="font-size: 80%;"><?php echo $lang_media['CurrentSessionSize']?>: <strong><span id="session_size">0</span>Mb</strong></p>
+			</div>
 		</div>
 	</div>
 	
@@ -264,5 +263,5 @@ $(document).ready(function(){
 			<tbody id="media-list-rows"></tbody>
 		</table>
 	</div></div>
-</form>	
+</fieldset></form>	
 <?php endif; ?>	

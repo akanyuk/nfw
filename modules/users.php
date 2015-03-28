@@ -285,7 +285,7 @@ class users extends active_record {
     				$query['WHERE'] .= ' AND id<>'.$this->record['id'];
     			}
     			if (!$result = NFW::i()->db->query_build($query)) {
-    				$this->error('Unable to validate user\'s '.$varname, __FILE__, __LINE__, NFW::i()->db->error());
+    				$this->error('Unable to validate '.$varname, __FILE__, __LINE__, NFW::i()->db->error());
     				return false;
     			}
 

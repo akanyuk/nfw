@@ -118,15 +118,17 @@ class settings extends active_record {
 	
 	function getConfigs($varnames = array()) {
 		$configs = array();
-		foreach ($varnames as &$varname) {
-			$configs[$varname] = array();	// defaults
-			$varname = '\''.$varname.'\'';
+		
+		$query = array('SELECT' => '`varname`, `values`', 'FROM' => $this->db_table);
+		
+		if (!empty($varnames)) {
+			foreach ($varnames as &$varname) {
+				$configs[$varname] = array();	// defaults
+				$varname = '\''.$varname.'\'';
+			}
+			$query['WHERE'] = '`varname` IN ('.implode(',', $varnames).')'; 
 		}
-		$query = array(
-			'SELECT' => '`varname`, `values`',
-			'FROM'	 => $this->db_table,
-			'WHERE'	 => '`varname` IN ('.implode(',', $varnames).')'
-		);
+		
 		if (!$result = NFW::i()->db->query_build($query)) {
 			$this->error('Unable to fetch records', __FILE__, __LINE__, NFW::i()->db->error());
 			return false;
@@ -165,7 +167,7 @@ class settings extends active_record {
 				'WHERE'		=>  '`name`=\''.NFW::i()->db->escape($this->record['name']).'\' AND id<>'.$this->record['id']
 			);
 			if (!$result = NFW::i()->db->query_build($query)) {
-				$this->error('Unable to validate record\'s name', __FILE__, __LINE__, NFW::i()->db->error());
+				$this->error('Unable to validate record name', __FILE__, __LINE__, NFW::i()->db->error());
 				return false;
 			}
 			 

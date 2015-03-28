@@ -1,29 +1,54 @@
-<html><head><title><?=NFW::i()->lang['Authorization']?></title>
+<?php
+NFW::i()->registerResource('jquery.activeForm');
+NFW::i()->registerFunction('ui_message');
+?>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" " http://www.w3.org/TR/html4/strict.dtd">
+<html><head>
+<title><?php echo NFW::i()->lang['Authorization']?></title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <style>
-	HTML,BODY { margin:0; }
-	HTML,BODY, TD, TH { color: #444; font: 9pt Verdana, Arial, Helvetica, sans-serif; text-align: left; }
-	TABLE { border: none; width: 100%;  border-spacing: 10px; border-collapse: separate; }
-	TD { padding: 0 10px; }
-	H1 { font-weight: bold; font-size: 10pt; padding: 0; margin: 0; }
-	.error { color: red; font-weight: bold; font-size: 8pt; }
+	HTML,BODY { margin:1em; color: #444; font: 9pt Verdana, Arial, Helvetica, sans-serif; text-align: left; }
+	P { margin: 0 !important; }
+	
+	FORM { width: 400px; }
+	.error-info { min-height: 0.5em !important; }
+	
+	.error-message { font-size: 90%; min-height: 2em; color: #f00; overflow: hidden; }
 </style>
+<script type="text/javascript">
+$(document).ready(function(){
+	var f = $('form[id="login"]');
+	f.activeForm({
+		error: function(response) {
+			f.find('div[id="error-message"]').text(response.message);
+		},
+		success: function(response) {
+			if (response.redirect) {
+				window.location.href = response.redirect;
+			}
+			else {
+				window.location.reload();
+			}
+		}
+	}).bind('cleanErrors', function(){
+		f.find('div[id="error-message"]').empty();
+	});
+	f.find('input').uniform();
+	f.find('button').button();
+});
+</script>
 </head>
 <body>
-	<form method="POST">		
-	    <table>
-	    	<tr><td colspan="2" style="padding: 10px;"><h1><?=NFW::i()->lang['Authorization_desc']?></h1></td></tr>
-	    	<?php  if (isset($error) && $error) : ?>
-	    		<tr><td class="error" colspan="2" style="padding: 10px;"><?php echo htmlspecialchars($error); ?></td></tr>
-	    	<?php endif; ?>
-	    	<tr><td style="white-space: nowrap; padding-right: 10px; padding-left: 20px; vertical-align: middle; text-align: right"><b><?=NFW::i()->lang['Login']?>:</b></td>
-	        <td style="width: 100%"><input type="text" name="username" maxlength="64" style="width: 100px" /></td></tr>
-	
-	        <tr><td style="white-space: nowrap; padding-right: 10px; padding-left: 20px; vertical-align: middle; text-align: right;"><b><?=NFW::i()->lang['Password']?>:</b></td>
-	        <td style="width: 100%"><input type="password" name="password" maxlength="64" style="width: 100px" /></td></tr>
-
-	        <tr><td>&nbsp;</td><td style="width: 100%"><input type="submit" name="login" value=" Войти " style="font-size: 10px; padding: 1px;" /></td></tr>
-	        <tr><td>&nbsp;</td><td><a href="javascript:history.go(-1)"><?=NFW::i()->lang['Go_Back']?></a></td></tr>
-		</table>        
+	<form id="login">
+		<fieldset>
+			<legend><?php echo NFW::i()->lang['Authorization']?></legend>
+			<?php echo ui_message(array('text' => NFW::i()->lang['Authorization_desc']))?>
+			<?php echo active_field(array('name' => 'username', 'desc'=> NFW::i()->lang['Login'], 'width'=>"200px;"))?>
+			<?php echo active_field(array('name' => 'password', 'type' => 'password', 'desc'=> NFW::i()->lang['Password'], 'width'=>"200px;"))?>
+			<div class="input-row">
+				<div id="error-message" class="error-message"></div>
+				<button name="login" type="submit"><?php echo NFW::i()->lang['GoIn']?></button>
+			</div>
+		</fieldset>	
     </form>
 </body></html>	

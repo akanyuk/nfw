@@ -23,6 +23,14 @@ $(document).ready(function(){
 
 	.main-menu A { color: #222; }
 	.main-menu A:hover { color: #555; }
+	
+	.admin-index .record { padding: 0.5em 1em; margin-top: 1em; max-width: 900px; }
+	.admin-index .record:nth-child(odd) { background-color: #f8f8f8; }
+	.admin-index p { font-size: 110%; padding-top: 0.3em; }
+	.admin-index .icon { float: left; }
+	.admin-index .icon IMG { width: 48px; height: 48px; -webkit-filter: grayscale(80%); filter: grayscale(80%); }
+	.admin-index .inner { margin-left: 60px; }
+	.admin-index .d { clear: both; }	
 </style>
 </head>
 <body>
@@ -54,5 +62,28 @@ $(document).ready(function(){
 	?>
 	</div>
 </div>
-<div style="margin-left: 110px; padding-right: 1em;"><?php echo ($content) ? $content : '&nbsp;';?></div>
+<div style="margin-left: 110px; padding-right: 1em;">
+<?php if (isset($content) && $content) : echo ($content); else: 
+		$lang_admin = NFW::i()->getLang('admin');
+?>
+<div class="admin-index">
+<h1><?php echo $lang_admin['welcome']?></h1>
+<p><?php echo $lang_admin['welcome desc']?></p>
+<?php 
+	foreach ($admin_menu as $cat_name=>$c) {
+		foreach ($c as $i) {
+			echo '<div class="record">';
+			if ($i['icon']) {
+				echo '<div class="icon"><a href="'.$i['url'].'"><img src="'.NFW::i()->assets($i['icon']).'" /></a></div>'."\n";
+			}
+
+			echo '<div class="inner"><h3><a href="'.$i['url'].'">'.$i['name'].'</a></h3>'."\n";
+			echo isset($i['desc']) ? '<p>'.$i['desc'].'</p>'."\n" : '';
+			echo '</div><div class="d"></div></div>'."\n";
+		}
+	}
+?>
+</div>
+<?php endif; ?>
+</div>
 </body></html>

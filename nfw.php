@@ -141,15 +141,26 @@ class NFW {
 			mkdir(PROJECT_ROOT.'assets', 0777);
 		}
 		
-		// Authentificate user if possible
-		$this->user = $this->default_user;
+		// Load default langpack
+		$this->setDefaultLanguage();
 		$this->lang = $this->getLang('nfw_main');
+		
+		// Authentificate user if possible
 		$this->login();
 		
-		// Reload correct langpack
+		// Reload correct langpack after login
 		if ($this->user['language'] != $this->default_user['language']) {
+			
+			// Set user's profile language from GET-string
+			if (!$this->user['is_guest'] && isset($this->cfg['update_profile_language']) && $this->cfg['update_profile_language'] && isset($_GET['lang']) && in_array($_GET['lang'], $this->cfg['available_languages'])) {
+				NFW::i()->db->query_build(array('UPDATE' => 'users', 'SET' => 'language=\''.$_GET['lang'].'\'', 'WHERE' => 'id='.$this->user['id']));
+				$this->user['language'] = $_GET['lang'];
+			}
+			
 			$this->lang = $this->getLang('nfw_main', true);
 		}
+		
+		unset($_GET['lang']);
 	}
 	
 	/**
@@ -229,11 +240,13 @@ class NFW {
 	    if (!empty($$lang) && !$force_reload)
 	        return $$lang;
 
-	    foreach ($this->include_paths as $i) {
-	    	if (file_exists($i.'lang/'.$this->user['language'].'/'.$lang_name.'.php')) {
-	        	include $i.'lang/'.$this->user['language'].'/'.$lang_name.'.php';
-	        	return $$lang;
-	    	}
+	    if (isset($this->user['language'])) {
+		    foreach ($this->include_paths as $i) {
+		    	if (file_exists($i.'lang/'.$this->user['language'].'/'.$lang_name.'.php')) {
+		        	include $i.'lang/'.$this->user['language'].'/'.$lang_name.'.php';
+		        	return $$lang;
+		    	}
+		    }
 	    }
 	    
 		foreach ($this->include_paths as $i) {
@@ -246,15 +259,45 @@ class NFW {
         return false;
 	}
 	
-	// Authenificate user if possible
+	// Set $this->user from defaults with reloaded language by various methods
+	function setDefaultLanguage() {
+		// Try to load language from GET, COOKIE, or geo IP
+		if (isset($this->cfg['set_language_by_get']) && $this->cfg['set_language_by_get'] && isset($_GET['lang']) && in_array($_GET['lang'], $this->cfg['available_languages'])) {
+			$this->default_user['language'] = $_GET['lang'];
+			$this->setCookie('lang', $_GET['lang'], time() + 60*60*24*30);
+			$_SERVER['REQUEST_URI'] = preg_replace('/(&?lang='.$_GET['lang'].')/', '', $_SERVER['REQUEST_URI']);
+			$_SERVER['REQUEST_URI'] = preg_replace('/(\?$)/', '', $_SERVER['REQUEST_URI']);
+		}
+		elseif (isset($this->cfg['set_language_by_cookie']) && $this->cfg['set_language_by_cookie'] && isset($_COOKIE['lang']) && in_array($_COOKIE['lang'], $this->cfg['available_languages'])) {
+			$this->default_user['language'] = $_COOKIE['lang'];
+		}
+		elseif (isset($this->cfg['set_language_by_geoip']) && $this->cfg['set_language_by_geoip'] && file_exists(PROJECT_ROOT.'var/SxGeo.dat')) {
+			require_once(NFW_ROOT.'helpers/SxGeo/SxGeo.php');
+			$SxGeo = new SxGeo(PROJECT_ROOT.'var/SxGeo.dat');
+			$country = $SxGeo->get($_SERVER['REMOTE_ADDR']);
+			if (in_array($country, array('RU', 'UA', 'BY', 'KZ'))) {
+				$this->default_user['language'] = 'Russian';
+			}
+			else {
+				$this->default_user['language'] = 'English';
+			}
+		}
+		elseif (isset($this->config['default_language'])) {
+			$this->default_user['language'] = $this->config['default_language'];
+		}
+	} 
+	
+	// Authenificate user if possible via activeForm
 	function login($action = '') {
+		$this->user = $this->default_user;
+		
 		$classname = (isset(NFW::i()->cfg['module_map']['users'])) ? NFW::i()->cfg['module_map']['users'] : 'users';
 		$CUsers = new $classname ();
-		
+	
 		// Logout action
 		if ($action == 'logout' || isset($_GET['action']) && $_GET['action'] == 'logout') {
 			$CUsers->cookie_logout();
-			
+	
 			// Делаем редирект, чтобы куки прижились
 			// Send no-cache headers
 			header('Expires: Thu, 21 Jul 1977 07:30:00 GMT');	// When yours truly first set eyes on this world! :)
@@ -270,40 +313,37 @@ class NFW {
 			$this->display('login.tpl');
 		}
 			
-		// Auth data send
+		// Authentificate send
 		if (isset($_POST['login']) && isset($_POST['username']) && isset($_POST['password'])) {
 			$form_username = trim($_POST['username']);
 			$form_password = trim($_POST['password']);
 			unset($_POST['login'], $_POST['username'], $_POST['password']);
-			
-			if (!$form_username) {
-				$this->display('login.tpl');
-			}
-			
+	
 			if (!$account = $CUsers->authentificate($form_username, $form_password)) {
-				$this->assign('error', $this->lang['Errors']['Wrong_auth']);
-				$this->display('login.tpl');
+				if (isset($_COOKIE['lang']) && in_array($_COOKIE['lang'], array('Russian', 'English')) && $_COOKIE['lang'] != $this->user['language']) {
+					$this->user['language'] = $_COOKIE['lang'];
+					// Reload lang file
+					$this->lang = $this->getLang('nfw_main', true);
+				}
+	
+				$this->renderJSON(array('result' => 'error', 'message' => $this->lang['Errors']['Wrong_auth']));
 			}
-
+	
 			$this->user = $account;
 			$this->user['is_guest'] = false;
-			
+	
 			$CUsers->cookie_update($this->user);
 			logs::write(logs::KIND_LOGIN);
-			
-			if (isset($this->cfg['login_redirect']) && $this->cfg['login_redirect']) {
-				NFW::i()->stop('<html><head><meta http-equiv="refresh" content="0;URL='.$this->absolute_path.'/'.$this->cfg['login_redirect'].'" /></head><body></body></html>');
-			}
-			
-			return;			
+				
+			$this->renderJSON(array('result' => 'succes'));
 		}
-		
+	
 		// Cookie login
 		if ($account = $CUsers->cookie_login()) {
 			$this->user = $account;
 			$this->user['is_guest'] = false;
 		}
-
+	
 		return;
 	}
 	

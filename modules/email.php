@@ -107,7 +107,7 @@ class email extends base_module {
 	    if (!empty($attachments)) {
 	    	foreach($attachments as $a) {
 	    		if (is_array($a)) {
-	    			$email->addAttachment($a['path'], $a['name']);
+	    			$email->addAttachment($a['fullpath'], $a['basename']);
 	    		}
 	    		else {
 	    			$email->addAttachment($a);

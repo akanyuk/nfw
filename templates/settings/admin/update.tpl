@@ -35,8 +35,8 @@ $(document).ready(function(){
  	 	handle: '.icon'
 	});
 
- 	$(document).on('click', '*[rel="remove-values-record"]', function(event){
- 	 	if ($(this).closest('div[id="record"]').attr('rel') == 'update') {
+ 	$(document).off('click', '*[data-rel="remove-values-record"]').on('click', '*[data-rel="remove-values-record"]', function(event){
+ 	 	if ($(this).closest('div[id="record"]').attr('data-rel') == 'update') {
  	 		if (!confirm('Удалить параметр?')) {
  	 			event.preventDefault();
  	 	 		return false;
@@ -68,12 +68,12 @@ $(document).ready(function(){
 </style>
 
 <div id="values-record-template-<?php echo $Module->record['varname']?>" style="display: none;">
-	<div id="record" class="record" rel="insert">
+	<div id="record" class="record" data-rel="insert">
 		<?php foreach ($Module->record['attributes'] as $key=>$a) { ?>
 			<div class="cell"><input type="text" name="values[<?php echo $key?>][]" style="<?php echo $a['style']?>" placeholder="<?php echo $a['desc']?>" <?php echo isset($a['required']) && $a['required'] ? 'req="required"' : ''?> /></div>
 		<?php } ?>
 		<div class="cell"><span class="icon ui-icon ui-icon-arrowthick-2-n-s ui-state-disabled" title="Переместить"></span></div>
-		<div class="cell"><span rel="remove-values-record" class="ui-icon ui-icon-closethick ui-state-disabled" title="Удалить"></span></div>
+		<div class="cell"><span data-rel="remove-values-record" class="ui-icon ui-icon-closethick ui-state-disabled" title="Удалить"></span></div>
 	</div>
 </div>
 
@@ -85,12 +85,12 @@ $(document).ready(function(){
 			<?php } ?>
 		</div>
 		<?php foreach ($Module->record['values'] as $v) { ?>
-			<div id="record" class="record" rel="update">
+			<div id="record" class="record" data-rel="update">
 				<?php foreach ($Module->record['attributes'] as $key=>$a) { ?>
 					<div class="cell"><input type="text" name="values[<?php echo $key?>][]" value="<?php echo $v[$key]?>" style="<?php echo $a['style']?>" placeholder="<?php echo $a['desc']?>" <?php echo isset($a['required']) && $a['required'] ? 'req="required"' : ''?> /></div>
 				<?php } ?>
 				<div class="cell"><span class="icon ui-icon ui-icon-arrowthick-2-n-s ui-state-disabled" title="Переместить"></span></div>
-				<div class="cell"><span rel="remove-values-record" class="ui-icon ui-icon-closethick ui-state-disabled" title="Удалить"></span></div>
+				<div class="cell"><span data-rel="remove-values-record" class="ui-icon ui-icon-closethick ui-state-disabled" title="Удалить"></span></div>
 			</div>
 		<?php } ?>
 	</div>

@@ -186,7 +186,7 @@ function _active_field_bootstrap($params) {
 	</div>
 	<div id="<?php echo $id ? $id : $name?>" class="form-group">
 		<div class="col-md-<?php echo $labelCols?>">&nbsp;</div>
-		<div><span class="help-block"></span></div>
+		<div class="col-md-<?php echo (12-$labelCols)?>"><span class="help-block"></span></div>
 	</div>
 <?php 
 	return ob_get_clean();
