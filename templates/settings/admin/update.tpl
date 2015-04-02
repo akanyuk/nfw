@@ -96,7 +96,7 @@ $(document).ready(function(){
 	</div>
 	
 	<div style="padding-top: 0.5em;">
-		<button type="submit" name="form-send" class="nfw-button" icon="ui-icon-disk">Сохранить изменения</button>
-		<button id="add-values-record" class="nfw-button" icon="ui-icon-plus">Добавить параметр</button>
+		<button type="submit" name="form-send" class="nfw-button" data-icon="ui-icon-disk">Сохранить изменения</button>
+		<button id="add-values-record" class="nfw-button" data-icon="ui-icon-plus">Добавить параметр</button>
 	</div>
 </form>

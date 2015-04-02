@@ -60,6 +60,10 @@ dd { font-weight: bold; margin-left: 0; }
 .dl-additional-wide dt { width: 230px; }
 .dl-additional-wide dd { margin-left: 250px; }
 			
+/* Sections */
+FIELDSET.section { padding: 1em; border: 1px solid #aaa; margin-right: 1em; margin-bottom: 1em; }
+FIELDSET.section LEGEND { font-weight: bold; text-transform: lowercase; color: #555555; margin-bottom: 3px; *margin-bottom: 10px; }
+			
 /* Main table */
 TABLE.main-table { border:0; padding:0; border-collapse:collapse; }
 TABLE.main-table TH, TABLE.main-table TD { padding: 2px 5px; }

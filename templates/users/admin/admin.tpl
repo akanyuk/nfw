@@ -110,7 +110,7 @@ $(document).ready(function(){
 
 <div id="custom-filters" style="display: none;">
 	<div style="float: left;">
-		<button id="users-insert" class="nfw-button nfw-button-small nfw-tooltip" icon="ui-icon-document" title="<?php echo $Module->lang['New']?>"></button>
+		<button id="users-insert" class="nfw-button nfw-button-small nfw-tooltip" data-icon="ui-icon-document" title="<?php echo $Module->lang['New']?>"></button>
 
 		<select id="group_id">
 			<option value="-1">Все</option>

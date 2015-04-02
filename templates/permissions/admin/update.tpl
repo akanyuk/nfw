@@ -14,7 +14,7 @@ $(document).ready(function(){
 
 <form id="update-roles" action="<?php echo $Module->formatURL('update').'&user_id='.$user['id']?>">
 	<div style="padding-bottom: 1em;">
-		<button type="submit" class="nfw-button" icon="ui-icon-disk" title="Сохранить изменения прав пользователя">Сохранить изменения</button>
+		<button type="submit" class="nfw-button" data-icon="ui-icon-disk" title="Сохранить изменения прав пользователя">Сохранить изменения</button>
 	</div>
 
 	<table class="main-table">	

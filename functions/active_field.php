@@ -111,7 +111,7 @@ function _active_field_jqueryui($params) {
 <?php } else { ?>
 	<input <?php echo $id ? 'id="'.$id.'"' : ''?> <?php echo $class.$rel.$req.$style.$maxlength.$placeholder?> type="text" name="<?php echo $name?>" value="<?php echo htmlspecialchars($value)?>" />
 <?php }?>
-		    <div rel="error-info" class="error-info" id="<?php echo $id ? $id : $name?>"></div>
+		    <div data-rel="error-info" class="error-info" id="<?php echo $id ? $id : $name?>"></div>
     	</div>
     </div>
 <?php

@@ -18,6 +18,7 @@ $(document).ready(function(){
 	/* CKEditor function
 	 * Available options:
 	 * height		textarea height 
+	 * save_button	Add 'Save' button in toolbar. Enabled by default 
 	 * toolbar		Toolbar type: 'Full' for extended toolbar 
 	 * media		`owner_class` for media uploading
 	 * media_owner	`owner_id` for media uploading
@@ -26,6 +27,8 @@ $(document).ready(function(){
 		var oTextarea = $(this);
 		if (!options) options = {};
 
+		options.save_button = isNaN(options.save_button) || options.save_button ? true : false;
+		
 		// Select toolbar
     	if (options.toolbar == 'Full') {
 	    	var ckToolbar = [
@@ -60,16 +63,18 @@ $(document).ready(function(){
 					this.config.allowedContent = true; /* all tags */
 					
 	 	 		   	// Add `active_form` save
-	 		    	this.addCommand('active_form_save', {
-	 	 				exec: function(editor) {
-	 	 					oTextarea.closest('form').submit();
-	 	 				}
-	 	 			});
-	 		    	this.ui.addButton('active_form_save', {
-	 					label : ckLng.afSave,
-	 					command : 'active_form_save',
-	 			 	    icon: 'cke_save.png',
-	 				});
+					if (options.save_button) {
+		 		    	this.addCommand('active_form_save', {
+		 	 				exec: function(editor) {
+		 	 					oTextarea.closest('form').submit();
+		 	 				}
+		 	 			});
+		 		    	this.ui.addButton('active_form_save', {
+		 					label : ckLng.afSave,
+		 					command : 'active_form_save',
+		 			 	    icon: 'cke_save.png',
+		 				});
+					}
 		    	}
 		    }
 		};

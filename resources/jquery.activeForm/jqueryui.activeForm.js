@@ -60,7 +60,7 @@ $.fn.activeForm = function(options) {
 	});
 	
 	form.bind('cleanErrors', function(){
-		form.find('[rel=error-info]').empty();
+		form.find('[rel=error-info], [data-rel=error-info]').empty();
 		form.find('INPUT').removeClass('error');
 		form.find('TEXTAREA').removeClass('error');
 		
@@ -120,6 +120,7 @@ $.fn.activeForm = function(options) {
 						}
 						else {
 							form.find('*[rel=error-info][id="'+i+'"]').html(e);
+							form.find('*[data-rel=error-info][id="'+i+'"]').html(e);
 							form.find('*[id='+i+']').find('INPUT').addClass('error');
 							form.find('*[id='+i+']').find('TEXTAREA').addClass('error');
 						}

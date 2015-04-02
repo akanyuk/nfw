@@ -9,12 +9,15 @@
 
 /* Usage:
  *
- *     1.   ui_message(array('state'=>"error", 'icon'=>"alert", 'text'=>"Text")
+ *     1.   ui_message("Text")
+ *     2.   ui_message(array('state'=>"error", 'icon'=>"alert", 'text'=>"Text")
  *
  */
 
 function ui_message($params) {
-	if (!isset($params['text'])) return;
+	if (!is_array($params)) {
+		$params = array('text' => $params);
+	}
 	
 	$icon = (isset($params['icon'])) ? '<span style="float: left; margin-right: 0.3em;" class="ui-icon ui-icon-'.$params['icon'].'"></span>' : ''; 
 	$state = (isset($params['state'])) ? $params['state'] : 'highlight';

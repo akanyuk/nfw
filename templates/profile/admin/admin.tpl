@@ -45,7 +45,7 @@ $(document).ready(function(){
        	</div>
 
 	    <div class="input-row">
-	    	<button type="submit" class="nfw-button" icon="ui-icon-disk"><?php echo $Module->lang['Save']?></button>
+	    	<button type="submit" class="nfw-button" data-icon="ui-icon-disk"><?php echo $Module->lang['Save']?></button>
         </div>
 	</fieldset>
 </form>

@@ -201,7 +201,7 @@ $(document).ready(function(){
 
 	<div style="float: left;">
 		<input type="file" name="local_file" />
-		<div rel="error-info" id="local_file" class="error-info"></div>
+		<div data-rel="error-info" id="local_file" class="error-info"></div>
 	</div>
 		
 	<?php ob_start(); ?>

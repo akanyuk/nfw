@@ -91,15 +91,16 @@
 		 * Convert all elements (div, a, button...) has class "ui-button" to jQuery UI button object
 		 * @date: 2013.09.08
 		 * 
-		 * You can use "icon" attribute;
+		 * You can use "icon" or "data-icon" attribute;
 		 */ 
 		$('.nfw-button').each(function(i){
 			$(this).button().removeClass('nfw-button');
 			
-			if (typeof($(this).attr('icon')) !== 'undefined') {
-				$(this).button('option', 'icons', { 'primary':$(this).attr('icon') });
+			if ($(this).attr('icon') || $(this).attr('data-icon')) {
+				var sIcon = $(this).attr('icon') ? $(this).attr('icon') : $(this).attr('data-icon');
+				$(this).button('option', 'icons', { 'primary': sIcon });
 			}
-			
+
 			if (!$(this).text()) {
 				$(this).find('.ui-button-text').html('&nbsp;');
 				$(this).find('.ui-button-text').css({ 'padding-left': '1.4em'});
@@ -109,7 +110,7 @@
 		$('.nfw-button-small').each(function(i){
 			$(this).removeClass('nfw-button-small');
 			
-			if (typeof($(this).attr('icon')) !== 'undefined') {
+			if ($(this).attr('icon') || $(this).attr('data-icon')) {
 				$(this).find('.ui-button-text').html('&nbsp;');
 				$(this).find('.ui-icon').css({'left': '0'});
 				$(this).find('.ui-button-text').css({'padding': '2px 7px 2px 6px'});

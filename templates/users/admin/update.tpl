@@ -100,7 +100,7 @@ $(document).ready(function(){
 
         	<label></label>
         	<div class="input-row">
-        		<button type="submit" class="nfw-button" icon="ui-icon-disk"><?php echo $Module->lang['Save']?></button>
+        		<button type="submit" class="nfw-button" data-icon="ui-icon-disk"><?php echo $Module->lang['Save']?></button>
         		<?php if (NFW::i()->checkPermissions('users', 'update_password')): ?>
 	        		<button id="update-password" class="nfw-button"><?php echo $Module->lang['Update_password']?></button>
         		<?php endif; ?>

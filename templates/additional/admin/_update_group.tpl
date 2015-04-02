@@ -51,7 +51,7 @@
 									<?php endif; ?>
 								</div>
 								
-								<button id="remove-variant" class="nfw-button ui-state-error" icon="ui-icon-close">Удалить запись</button>
+								<button id="remove-variant" class="nfw-button ui-state-error" data-icon="ui-icon-close">Удалить запись</button>
 							</div>	
 							<div class="delimiter"></div>	
 						</div>
