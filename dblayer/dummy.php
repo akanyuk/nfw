@@ -6,6 +6,8 @@
 
 
 class DBLayer {
+	var $saved_queries = array();
+
 	function error() { return array('error_sql' => '', 'error_no' => 0,'error_msg' => 'No DB connection'); }
 	function get_version() { return array('name' => 'Dummy DB', 'version'	=> ''); }
 	function get_num_queries() { return 0; }
