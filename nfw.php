@@ -6,25 +6,8 @@
 set_error_handler('_errorHandler');
 set_exception_handler('_exceptionHandler');
 
-// Set default encoding UTF-8
-mb_internal_encoding("UTF-8");
-
 // For PHP above 5.3.0
 date_default_timezone_set('Etc/GMT-3');
-
-// Turn off magic_quotes_runtime
-if (get_magic_quotes_runtime())
-	@ini_set('magic_quotes_runtime', false);
-
-// Strip slashes from GET/POST/COOKIE (if magic_quotes_gpc is enabled)
-if (get_magic_quotes_gpc()) {
-	function _stripslashes_array($array) {
-		return is_array($array) ? array_map('_stripslashes_array', $array) : stripslashes($array);
-	}
-	$_GET = _stripslashes_array($_GET);
-	$_POST = _stripslashes_array($_POST);
-	$_COOKIE = _stripslashes_array($_COOKIE);
-}
 
 // Strip out "bad" UTF-8 characters
 function _remove_bad_utf8_characters($array) {
@@ -877,7 +860,14 @@ class NFW {
 }
 
 function _exceptionHandler($exception) {
-	return NFW::i()->errorHandler(0, $exception->getMessage(), $exception->getFile(), $exception->getLine());
+        if (class_exists('ChromePhp')) {
+                ChromePhp::error('Error: '.$exception->getMessage());
+                ChromePhp::error('File: '.$exception->getFile().':'.$exception->getLine());
+        } else {
+                echo $exception->getMessage().' (File: '.$exception->getFile().' , Line: '.$exception->getLine();
+        }
+
+	return true;
 }
 
 function _errorHandler($error_number, $message, $file, $line, $db_error = false) {
@@ -885,6 +875,17 @@ function _errorHandler($error_number, $message, $file, $line, $db_error = false)
 		// This error code is not included in error_reporting
 		return true;
 	}
-	
-	return NFW::i()->errorHandler($error_number, $message, $file, $line, $db_error);
+        
+        if (class_exists('ChromePhp')) {
+                ChromePhp::error('Error: '.$message);
+                ChromePhp::error('File: '.$file.':'.$line);
+                if (isset($db_error['error_msg']) && $db_error['error_msg']) {
+                        ChromePhp::error('Database reported: '.$db_error['error_msg']);
+                        if (isset($db_error['error_sql']) && $db_error['error_sql']) {
+                                ChromePhp::error('Failed query: '.$db_error['error_sql']);
+                        }
+                }
+        }
+
+	return true;
 }
