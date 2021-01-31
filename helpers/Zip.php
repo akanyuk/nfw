@@ -138,9 +138,11 @@ class Archive_Zip
     {
 
       // ----- Check the zlib
+/*      
       if (!extension_loaded('zlib')) {
           PEAR::loadExtension('zlib');
       }
+*/      
       if (!extension_loaded('zlib')) {
           die("The extension 'zlib' couldn't be found.\n".
               "Please make sure your version of PHP was built ".
@@ -543,7 +545,8 @@ class Archive_Zip
 
             // ----- Read the central directory informations
             $v_central_dir = array();
-            if (($v_result = $this->_readEndCentralDir($v_central_dir)) != 1) {
+            $v_result = $this->_readEndCentralDir($v_central_dir);
+            if ($v_result != 1) {
                 return 0;
             }
 
@@ -680,6 +683,7 @@ class Archive_Zip
         $v_const_list = get_defined_constants();
     
         // ----- Extract error constants from all const.
+        $v_error_list = array();
         for (reset($v_const_list);
              list($v_key, $v_value) = each($v_const_list);) {
             if (substr($v_key, 0, strlen('ARCHIVE_ZIP_ERR_'))
@@ -808,7 +812,6 @@ class Archive_Zip
   function _create($p_list, &$p_result_list, &$p_params)
   {
     $v_result=1;
-    $v_list_detail = array();
 
     $p_add_dir = $p_params['add_path'];
     $p_remove_dir = $p_params['remove_path'];
@@ -847,7 +850,6 @@ class Archive_Zip
   function _add($p_list, &$p_result_list, &$p_params)
   {
     $v_result=1;
-    $v_list_detail = array();
 
     $p_add_dir = $p_params['add_path'];
     $p_remove_dir = $p_params['remove_path'];
@@ -1232,7 +1234,7 @@ class Archive_Zip
           {
 
             // ----- Need an array as parameter
-            $p_temp_list[0] = $v_path.$p_hitem;
+            $p_temp_list = array(0 => $v_path.$p_hitem);
             $v_result = $this->_addFileList($p_temp_list, $p_result_list, $p_add_dir, $p_remove_dir, $p_remove_all_dir, $p_params);
 
             // ----- Update the number of elements of the list
@@ -1785,7 +1787,6 @@ class Archive_Zip
     if (($p_remove_path != "") && (substr($p_remove_path, -1) != '/')) {
       $p_remove_path .= '/';
     }
-    $p_remove_path_size = strlen($p_remove_path);
 
     // ----- Open the zip file
     if (($v_result = $this->_openFd('rb')) != 1)
@@ -2661,7 +2662,6 @@ class Archive_Zip
   function _deleteByRule(&$p_result_list, &$p_params)
   {
     $v_result=1;
-    $v_list_detail = array();
 
     // ----- Open the zip file
     if (($v_result=$this->_openFd('rb')) != 1)
@@ -2949,7 +2949,7 @@ class Archive_Zip
   *
   * { Description }
   *
-  * @param [type] $p_is_dir
+  * @param $p_is_dir
   */
   function _dirCheck($p_dir, $p_is_dir=false)
   {
@@ -3252,7 +3252,7 @@ class Archive_Zip
     }
     
     // ----- Check that all the params are valid
-    for (reset($p_params); list($v_key, $v_value) = each($p_params); ) {
+    for (reset($p_params); list($v_key) = each($p_params); ) {
         if (!isset($p_default[$v_key])) {
             $this->_errorLog(ARCHIVE_ZIP_ERR_INVALID_PARAMETER,
                              'Unsupported parameter with key \''.$v_key.'\'');
@@ -3262,7 +3262,7 @@ class Archive_Zip
     }
 
     // ----- Set the default values
-    for (reset($p_default); list($v_key, $v_value) = each($p_default); ) {
+    for (reset($p_default); list($v_key) = each($p_default); ) {
         if (!isset($p_params[$v_key])) {
             $p_params[$v_key] = $p_default[$v_key];
         }
@@ -3585,7 +3585,7 @@ class Archive_Zip
   *
   * { Description }
   *
-  * @param [type] $p_remove_disk_letter
+  * @param $p_remove_disk_letter
   */
   function _tool_TranslateWinPath($p_path, $p_remove_disk_letter=true)
   {

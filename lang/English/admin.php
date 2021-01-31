@@ -1,5 +1,9 @@
 <?php
-// English language
+/**
+ * English language
+ * 
+ * @var array $lang_admin
+ **/
 
 $lang_admin = array(
 	'welcome' => 'Welcome to Control panel',

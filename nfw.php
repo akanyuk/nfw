@@ -1,9 +1,13 @@
 <?php
-define('NFW_VERSION', '1.6.2');
-
+/**
+ * @var string $foo
+ **/
 // Custom error handler
 set_error_handler('_errorHandler');
 set_exception_handler('_exceptionHandler');
+
+// Set default encoding UTF-8
+mb_internal_encoding("UTF-8");
 
 // For PHP above 5.3.0
 date_default_timezone_set('Etc/GMT-3');
@@ -32,75 +36,109 @@ $_POST = _remove_bad_utf8_characters($_POST);
 $_COOKIE = _remove_bad_utf8_characters($_COOKIE);
 $_REQUEST = _remove_bad_utf8_characters($_REQUEST);
 
-
 class NFW {
 	// Site config
 	var $cfg;
 	
-	// 
+	// paths
 	var $base_path = '';
 	var $absolute_path = '';
 
 	// DB class instance
 	var $db = false;
 	
-	// Current user's profile
-	var $user = array();
-	
 	var $lang = array();
 	
 	var $include_paths = array();
 	
-	protected $permissions = null;		//Permissions list for current user
-
+	// breadcrumb related
+	var $breadcrumb = array();
+	var $breadcrumb_status = '';
+	
+	// Current user's profile
+	var $user = array();
+	
+	var $current_controler = false;
+	
 	protected $default_user = array(
 		'id' => 1,
 		'username' => 'Guest',
 		'group_id' => 0,
 		'is_guest' => true,
 		'is_blocked' => false,
-		'language' => 'Russian'
 	);
 	
+	protected $current_language = false;
+			
+	protected $permissions = null;		//Permissions list for current user
+	
 	protected $resources_depends = array(
+		'bootstrap' => array(
+			'resources' => array('jquery'),
+		),
+		'bootstrap.sidebar' => array(
+			'resources' => array('bootstrap'),
+		),
 		'jquery.activeForm' => array(
 			'copy' => array('jquery.activeForm'),
 			'resources' => array(
+				'jquery', 
 				'base',
-				'jquery.blockUI',
-				'jquery.activeForm/jquery.form.min.js',
-			),
-			'resources:bootstrap' => array(
-				'jquery.activeForm/bootstrap.activeForm.js',
-				'jquery.activeForm/bootstrap.activeForm.css'
-			),
-			'resources:jqueryui' => array(
-				'jquery.activeForm/jqueryui.activeForm.js',
-				'jquery.activeForm/jqueryui.activeForm.css',
-				'jquery.uniform'
+				'jquery.activeForm/jquery.form.js',
+				'jquery.activeForm/jquery.activeForm.js',
+				'jquery.activeForm/jquery.activeForm.css'
 			),
 			'functions' => array('active_field')
 		),
+		'jquery.file-upload' => array(
+			'resources' => array(
+				'jquery', 
+				'base',
+				'jquery.ui.widget',	# internal depend of 'jquery.file-upload'
+				'jquery.ui.interactions', 
+				'jquery.jgrowl',
+				'font-awesome',						
+			),
+			'functions' => array('tmb')
+		),
+		'jquery.jgrowl' => array(
+			'resources' => array('jquery'),
+		),
+		'jquery.ui.widget' => array(
+			'resources' => array('jquery'),
+		),
+		'jquery.ui.interactions' => array(
+			'resources' => array('jquery'),
+		),
 		'dataTables' => array(
-			'resources' => array('jquery.blockUI', 'jquery.cookie'),
+			'copy' => array('dataTables'),
+			'resources' => array(
+				'bootstrap',
+				'dataTables/jquery.dataTables.min.js',
+				'dataTables/dataTables.bootstrap.min.js',
+				'dataTables/jquery.dataTables.custom.js',
+					
+				'dataTables/jquery.dataTables.min.css',
+				'dataTables/dataTables.bootstrap.min.css',
+			),
 		),
 		'ckeditor' => array(
 			'copy' => array('ckeditor'),
-			'resources' => array('ckeditor/ckedit.js', 'ckeditor/ckeditor.js', 'ckeditor/adapters/jquery.js'),  
+			'resources' => array('jquery', 'ckeditor/ckedit.js', 'ckeditor/ckeditor.js', 'ckeditor/adapters/jquery.js'),  
+		),
+		'admin' => array(
+			'resources' => array('jquery', 'font-awesome'),
 		),
 	);
 	
 	// Rendering vars
 	protected $_template_var = array();
+	protected $_head_assets = array(); 	// Needfull assets
 	
-	private $ui = false;				// User interface: jQueryUI, Bootstrap
-	
-	private $_head_assets = array(); 	// Needfull assets
-
 	private $_start_execution;
 	
 	private static $_instance;
-	
+
 	function __construct($cfg = null) {
 		// Record the start time (will be used to calculate the generation time for the page)
 		$this->_start_execution = $this->microtime();
@@ -109,6 +147,11 @@ class NFW {
 		
 		$this->cfg = $cfg;
 
+		// default timezone
+		if (isset($this->cfg['default_timezone'])) {
+			date_default_timezone_set($this->cfg['default_timezone']);
+		}
+		
 		// include paths with order important (modules, templates, controlers, resources)
 		$this->include_paths = isset($this->cfg['include_paths']) && !empty($this->cfg['include_paths']) ? $this->cfg['include_paths'] :
 		array(
@@ -116,51 +159,61 @@ class NFW {
 			NFW_ROOT.'/'
 		);
 							
+		
 		if (isset($this->cfg['db']['type'])) {
 			// Load DB abstraction layer and connect
-			require NFW_ROOT.'dblayer/common_db.php';
+			require NFW_ROOT.'dblayer/'.$this->cfg['db']['type'].'.php';
 			$this->db = new DBLayer($this->cfg['db']['host'], $this->cfg['db']['username'], $this->cfg['db']['password'], $this->cfg['db']['name'], $this->cfg['db']['prefix'], $this->cfg['db']['p_connect']);
 		}
 		else {
 			$this->cfg['db']['type'] = 'dummy';
-			require NFW_ROOT.'dblayer/common_db.php';
+			require NFW_ROOT.'dblayer/dummy.php';
 			$this->db = new DBLayer();
 		}
 		
 		// base_path, absolute _path
-		$page = preg_replace('/(^\/)|(\/$)|(\?.*)|(\/\?.*)/', '', $_SERVER['REQUEST_URI']);
-		if ($page) {
-			$chapters = explode('/', $page);
-			$this->base_path = str_repeat('../', count($chapters));		
+		if (!$this->base_path) {
+			$page = preg_replace('/(^\/)|(\/$)|(\?.*)|(\/\?.*)/', '', $_SERVER['REQUEST_URI']);
+			if ($page) {
+				$chapters = explode('/', $page);
+				$this->base_path = str_repeat('../', count($chapters));		
+			}
 		}
-		
-		$this->absolute_path = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']) ? 'https://' : 'http://').$_SERVER['HTTP_HOST'];
+				
+		if (!$this->absolute_path) {
+			$this->absolute_path = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] && $_SERVER['HTTPS'] != 'off') ? 'https://' : 'http://').$_SERVER['HTTP_HOST'];
+		}
 		
 		// We need a assets main folder
 		if (!file_exists(PROJECT_ROOT.'assets')) {
 			mkdir(PROJECT_ROOT.'assets', 0777);
 		}
 		
-		// Load default langpack
-		$this->setDefaultLanguage();
-		$this->lang = $this->getLang('nfw_main');
+		// Set default language
+		$this->setLanguage();
 		
 		// Authentificate user if possible
 		$this->login();
-		
-		// Reload correct langpack after login
-		if ($this->user['language'] != $this->default_user['language']) {
-			
+
+		// Reload correct lang pack after login attempt
+		if ($this->user['language'] != $this->current_language) {
 			// Set user's profile language from GET-string
-			if (!$this->user['is_guest'] && isset($this->cfg['update_profile_language']) && $this->cfg['update_profile_language'] && isset($_GET['lang']) && in_array($_GET['lang'], $this->cfg['available_languages'])) {
+			if ($this->user['id'] && isset($this->cfg['update_profile_language']) && $this->cfg['update_profile_language'] && isset($_GET['lang']) && in_array($_GET['lang'], $this->cfg['available_languages'])) {
 				NFW::i()->db->query_build(array('UPDATE' => 'users', 'SET' => 'language=\''.$_GET['lang'].'\'', 'WHERE' => 'id='.$this->user['id']));
 				$this->user['language'] = $_GET['lang'];
 			}
-			
-			$this->lang = $this->getLang('nfw_main', true);
+			elseif (isset($this->cfg['available_languages']) && in_array($this->user['language'], $this->cfg['available_languages'])) {
+				// Reload language pack
+				$this->current_language = $this->user['language'];
+				$this->lang = $this->getLang('nfw_main');
+			}
+			else {
+				// Fix incorrect user's language
+				$this->user['language'] = $this->current_language;
+			}
 		}
 		
-		unset($_GET['lang']);
+		if (isset($_GET['lang'])) unset($_GET['lang']);
 	}
 	
 	/**
@@ -170,43 +223,33 @@ class NFW {
 		return self::$_instance;
 	}
 
-	/**
-	 * Start execution
-	 * 
-	 * @return unknown_type
-	 */
 	public static function run($cfg = null) {
-		$classname = (defined('NFW_CLASSNAME')) ? NFW_CLASSNAME : 'NFW';
+		$classname = defined('NFW_CLASSNAME') ? NFW_CLASSNAME : 'NFW';
 		spl_autoload_register(array($classname, 'autoload'));
 		
-		$FOOBAR = new $classname($cfg);
+		new $classname($cfg);
 		
-		// Determine controler name
-		$controler = 'main';
-	
-		$page = preg_replace('/(^\/)|(\/$)|(\?.*)|(\/\?.*)/', '', $_SERVER['REQUEST_URI']);
-		if ($page) {
-			$chapters = explode('/', $page);
-			if (isset($chapters[0])) {
-				$controler = $chapters[0];
+		@list($foo, NFW::i()->current_controler) = explode('/', parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+		if (NFW::i()->current_controler) {
+			foreach (NFW::i()->include_paths as $path) {
+				if (file_exists($path.'controlers/'.NFW::i()->current_controler.'.php')) {
+					require $path.'controlers/'.NFW::i()->current_controler.'.php';
+					NFW::i()->stop();
+				}
 			}
 		}
-	
+		
+		// Try to find default controler
+		NFW::i()->current_controler = isset($cfg['default_controler']) ? $cfg['default_controler'] : 'main';
+		
 		foreach (NFW::i()->include_paths as $path) {
-			if (file_exists($path.'controlers/'.$controler.'.php')) {
-				require $path.'controlers/'.$controler.'.php';
-				NFW::i()->stop();
-			}
-		}
-
-		foreach (NFW::i()->include_paths as $path) {
-			if (file_exists($path.'controlers/main.php')) {
-				require $path.'controlers/main.php';
+			if (file_exists($path.'controlers/'.NFW::i()->current_controler.'.php')) {
+				require $path.'controlers/'.NFW::i()->current_controler.'.php';
 				NFW::i()->stop();
 			}
 		}
 		
-		NFW::i()->stop();		
+		NFW::i()->stop('Controler not found.');	
 	}
 	
 	public static function autoload($class_name) {
@@ -217,81 +260,105 @@ class NFW {
 		}
 	}
 
-	// By default check permissions for admin's page ($module_id = 1) 
-	function checkPermissions($module = 'admin', $action = '', $additional = false) {
+	function checkPermissions($module, $action = '', $additional = false) {
 		if ($this->permissions === null) {
 			$C = new permissions();
-			$this->permissions = $C->getPermissions($this->user['id']);
+			$this->permissions = $C->getPermissions($this->user);
 		}		
 		
 		// Search permission
 		foreach ($this->permissions as $p) {
 			if ($p['module'] == $module && $p['action'] == $action) return true;
 		}
-		
+
 		return false;
 	}
 	
-	// Return array with language
-	function getLang($lang_name, $force_reload = false) {
-	    $lang = 'lang_'.$lang_name;
-	
-	    global $$lang;
-	    if (!empty($$lang) && !$force_reload)
-	        return $$lang;
+	function getClass($module, $reverse_search = false) {
+	 	$classname = is_object($module) ? get_class($module) : $module; 
 
-	    if (isset($this->user['language'])) {
-		    foreach ($this->include_paths as $i) {
-		    	if (file_exists($i.'lang/'.$this->user['language'].'/'.$lang_name.'.php')) {
-		        	include $i.'lang/'.$this->user['language'].'/'.$lang_name.'.php';
-		        	return $$lang;
-		    	}
-		    }
+	 	if ($reverse_search) {
+	 		foreach (isset($this->cfg['module_map']) ? $this->cfg['module_map'] : array() as $new => $old) {
+	 			if ($old == $classname) return $new; 
+	 		}
+	 		return $classname;	 		
+	 	} 
+	 	
+	 	return isset($this->cfg['module_map'][$classname]) ? $this->cfg['module_map'][$classname] : $classname;
+	}
+	
+	// Return array with language
+	function getLang($lang_name, $field_name = false) {
+	    $lang = 'lang_'.$lang_name;
+	    $langname = 'langname_'.$lang_name;
+	
+	    global $$lang, $$langname;
+	    if (!empty($$lang) && $$langname == NFW::i()->current_language) {
+	    	$result = $$lang;
+	        return $field_name ? $result[$field_name] : $result;
 	    }
+
+	    $$langname = NFW::i()->current_language;
+	    
+		$result = array();
 	    
 		foreach ($this->include_paths as $i) {
-	    	if (file_exists($i.'lang/'.$this->default_user['language'].'/'.$lang_name.'.php')) {
-	        	include $i.'lang/'.$this->default_user['language'].'/'.$lang_name.'.php';
-	        	return $$lang;
-	    	}
-	    }
-	    
-        return false;
+		   	if (file_exists($i.'lang/'.$this->current_language.'/'.$lang_name.'.php')) {
+		       	include $i.'lang/'.$this->current_language.'/'.$lang_name.'.php';
+		       	$result = array_replace_recursive($$lang, $result);
+		   	}
+		}
+
+        if (empty($result)) {
+        	return false;
+        }
+        	
+        $$lang = $result;
+        
+        return $field_name ? $result[$field_name] : $result;
 	}
 	
 	// Set $this->user from defaults with reloaded language by various methods
-	function setDefaultLanguage() {
+	function setLanguage($language = false) {
+		$lang_cookie = NFW::i()->cfg['cookie']['name'].'_lang';
+		
 		// Try to load language from GET, COOKIE, or geo IP
 		if (isset($this->cfg['set_language_by_get']) && $this->cfg['set_language_by_get'] && isset($_GET['lang']) && in_array($_GET['lang'], $this->cfg['available_languages'])) {
-			$this->default_user['language'] = $_GET['lang'];
-			$this->setCookie('lang', $_GET['lang'], time() + 60*60*24*30);
+			$this->current_language = $_GET['lang'];
+			$this->setCookie($lang_cookie, $_GET['lang'], time() + 60*60*24*30);
 			$_SERVER['REQUEST_URI'] = preg_replace('/(&?lang='.$_GET['lang'].')/', '', $_SERVER['REQUEST_URI']);
 			$_SERVER['REQUEST_URI'] = preg_replace('/(\?$)/', '', $_SERVER['REQUEST_URI']);
 		}
-		elseif (isset($this->cfg['set_language_by_cookie']) && $this->cfg['set_language_by_cookie'] && isset($_COOKIE['lang']) && in_array($_COOKIE['lang'], $this->cfg['available_languages'])) {
-			$this->default_user['language'] = $_COOKIE['lang'];
+		elseif (isset($this->cfg['set_language_by_cookie']) && $this->cfg['set_language_by_cookie'] && isset($_COOKIE[$lang_cookie]) && in_array($_COOKIE[$lang_cookie], $this->cfg['available_languages'])) {
+			$this->current_language = $_COOKIE[$lang_cookie];
 		}
 		elseif (isset($this->cfg['set_language_by_geoip']) && $this->cfg['set_language_by_geoip'] && file_exists(PROJECT_ROOT.'var/SxGeo.dat')) {
 			require_once(NFW_ROOT.'helpers/SxGeo/SxGeo.php');
 			$SxGeo = new SxGeo(PROJECT_ROOT.'var/SxGeo.dat');
 			$country = $SxGeo->get($_SERVER['REMOTE_ADDR']);
 			if (in_array($country, array('RU', 'UA', 'BY', 'KZ'))) {
-				$this->default_user['language'] = 'Russian';
+				$this->current_language = 'Russian';
 			}
 			else {
-				$this->default_user['language'] = 'English';
+				$this->current_language = 'English';
 			}
 		}
-		elseif (isset($this->config['default_language'])) {
-			$this->default_user['language'] = $this->config['default_language'];
+		elseif (isset($this->cfg['default_language'])) {
+			$this->current_language = $this->cfg['default_language'];
 		}
+		else {
+			$this->current_language = 'English';
+		}
+		
+		$this->lang = $this->getLang('nfw_main');
 	} 
 	
 	// Authenificate user if possible via activeForm
-	function login($action = '') {
+	function login($action = '', $login_options = array()) {
 		$this->user = $this->default_user;
+		$this->user['language'] = $this->current_language;
 		
-		$classname = (isset(NFW::i()->cfg['module_map']['users'])) ? NFW::i()->cfg['module_map']['users'] : 'users';
+		$classname = isset(NFW::i()->cfg['auth_class']) && NFW::i()->cfg['auth_class'] ? NFW::i()->cfg['auth_class'] : 'users';
 		$CUsers = new $classname ();
 	
 		// Logout action
@@ -309,7 +376,8 @@ class NFW {
 		}
 			
 		// Login form action
-		if ($action == 'form' || isset($_GET['action']) && $_GET['action'] == 'login') {
+		if ($action == 'form') {
+			$this->assign('login_options', $login_options);
 			$this->display('login.tpl');
 		}
 			
@@ -320,13 +388,18 @@ class NFW {
 			unset($_POST['login'], $_POST['username'], $_POST['password']);
 	
 			if (!$account = $CUsers->authentificate($form_username, $form_password)) {
-				if (isset($_COOKIE['lang']) && in_array($_COOKIE['lang'], array('Russian', 'English')) && $_COOKIE['lang'] != $this->user['language']) {
-					$this->user['language'] = $_COOKIE['lang'];
+				$lang_cookie = NFW::i()->cfg['cookie']['name'].'_lang';
+				if (isset($_COOKIE[$lang_cookie]) && in_array($_COOKIE[$lang_cookie], array('Russian', 'English')) && $_COOKIE[$lang_cookie] != $this->user['language']) {
+					$this->user['language'] = $_COOKIE[$lang_cookie];
 					// Reload lang file
-					$this->lang = $this->getLang('nfw_main', true);
+					$this->current_language = $this->user['language'];
+					$this->lang = $this->getLang('nfw_main');
 				}
 	
-				$this->renderJSON(array('result' => 'error', 'message' => $this->lang['Errors']['Wrong_auth']));
+				$this->renderJSON(array('result' => 'error', 'errors' => array(
+					'username' => $this->lang['Errors']['Wrong_auth'],
+					'password' => $this->lang['Errors']['Wrong_auth']
+				)));
 			}
 	
 			$this->user = $account;
@@ -335,7 +408,7 @@ class NFW {
 			$CUsers->cookie_update($this->user);
 			logs::write(logs::KIND_LOGIN);
 				
-			$this->renderJSON(array('result' => 'succes'));
+			$this->loginSuccess();
 		}
 	
 		// Cookie login
@@ -345,6 +418,11 @@ class NFW {
 		}
 	
 		return;
+	}
+	
+	// After succesfully logined
+	function loginSuccess() {
+		$this->renderJSON(array('result' => 'succes'));		
 	}
 	
 	// Return microtime for execution counting
@@ -357,15 +435,16 @@ class NFW {
 	//-------------------------------------
 	function encodeStr($str, $seq = '') {
 		$salt = isset($this->cfg['encode_str_salt']) ? $this->cfg['encode_str_salt'] : 'yFR84oF5EWqPEDfD';
+		$len = strlen($str);
 		$gamma = '';
-		while (strlen($gamma) < strlen($str)) {
-			$seq = sha1($gamma.$seq.$salt, true);
-			$gamma.=substr($seq,0,8);
+		$n = $len>100 ? 8 : 2;
+		while(strlen($gamma) < $len) {
+			$gamma .= substr(pack('H*', sha1($seq.$gamma.$salt)), 0, $n);
 		}
-	
+		
 		return $str^$gamma;
 	}
-	
+		
 	function serializeArray($array) {
 		return base64_encode(serialize($array));
 	}
@@ -388,37 +467,14 @@ class NFW {
 			setcookie($name, $value, $expire, $this->cfg['cookie']['path'].'; HttpOnly', $this->cfg['cookie']['domain'], $this->cfg['cookie']['secure']);
 	}
 	
-	function setUI($ui = 'unknown') {
-	    // Register UI related resources
-	    switch($ui) {
-	    	case 'jqueryui':
-	    		$this->registerResource(isset($this->cfg['jqueryui_css']) ? $this->cfg['jqueryui_css'] : 'jquery.ui.smoothness', array('atStart' => true));
-	    		$this->registerResource('jquery.ui', array('atStart' => true));
-	    		$this->registerResource('jquery', array('atStart' => true));
-	    		break;
-	    	case 'bootstrap':
-	    		$this->registerResource(isset($this->cfg['bootstrap_css']) ? $this->cfg['bootstrap_css'] : 'bootstrap.theme', array('atStart' => true));
-	    		$this->registerResource('bootstrap', array('atStart' => true));
-	    		$this->registerResource('jquery', array('atStart' => true));
-	    		break;
-	    	default:
-	    		$this->stop('Unknown UI: '.$ui);
-	    		break;
-	    }
-	    
-	    $this->ui = $ui;
-	}
-	
-	function getUI() {
-		return $this->ui;
-	}
-	
-	function registerFunction($function_name = '') {
-		if (function_exists($function_name)) return true;
+	function registerFunction($functionPath = '') {
+	    $parts = explode("/", $functionPath);
+	    $functionName = array_pop($parts);
+		if (function_exists($functionName)) return true;
 	
 		foreach ($this->include_paths as $i) {
-			if (file_exists($i.'functions/'.$function_name.'.php')) {
-				include($i.'functions/'.$function_name.'.php');
+			if (file_exists($i.'functions/'.$functionPath.'.php')) {
+				include($i.'functions/'.$functionPath.'.php');
 				return true;
 			}
 		}
@@ -474,22 +530,12 @@ class NFW {
 		$skipDepends = isset($options['skipDepends']) && $options['skipDepends'] ? true : false;
 		
 		if (!$skipDepends) {
-			$ui = $this->getUI();
-			
 			if (isset($this->resources_depends[$path]['resources'])) {
 				foreach ($this->resources_depends[$path]['resources'] as $r) $this->registerResource($r, array('atStart' => $atStart, 'skipDepends' => $skipDepends));
 			}
 				
-			if (isset($this->resources_depends[$path]['resources:'.$ui])) {
-				foreach ($this->resources_depends[$path]['resources:'.$ui] as $r) $this->registerResource($r, array('atStart' => $atStart, 'skipDepends' => $skipDepends));
-			}
-			
 			if (isset($this->resources_depends[$path]['functions'])) {
 				foreach ($this->resources_depends[$path]['functions'] as $f) $this->registerFunction($f, array('atStart' => $atStart, 'skipDepends' => $skipDepends));
-			}
-			
-			if (isset($this->resources_depends[$path]['functions:'.$ui])) {
-				foreach ($this->resources_depends[$path]['functions:'.$ui] as $f) $this->registerFunction($f, array('atStart' => $atStart, 'skipDepends' => $skipDepends));
 			}
 			
 			if (isset($this->resources_depends[$path]['copy'])) {
@@ -562,7 +608,8 @@ class NFW {
 		
 		if (!$post_process) return $result;
 		
-		$ext = strtolower(end(explode('.', $path)));
+		$ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+		
 		if ($ext == 'js') {
 			return '<script src="'.$result.'" type="text/javascript"></script>';
 		}
@@ -576,24 +623,24 @@ class NFW {
 			return false;
 	}
 		
-	function renderJSON($data, $_reqursive = null) {
+	function renderJSON($data, $_reqursive = null, $wrap_textarea = true) {
 		if ($_reqursive !== null) {
 			$result = '{'."\n";
 			foreach ($data as $key=>$value) {
 				if (is_array($value)) {
-					$result .= '"'.$key.'": '.self::renderJSON($value, true).',';
+					$result .= '"'.$key.'": '.self::renderJSON($value, true, $wrap_textarea).',';
 				}
 				else {
-					$result .= '"'.$key.'": "'.addslashes($value).'",';
+					$result .= '"'.$key.'": '.json_encode($value).',';
 				}
 			}
 			return substr($result, 0, -1)."\n".'}';
 				
 		}
 		
-		$result = $this->renderJSON($data, true);
+		$result = $this->renderJSON($data, true, $wrap_textarea);
 		// wrap json in a textarea if the request did not come from xhr 
-		if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest') {
+		if (!$wrap_textarea || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest')) {
 			$this->stop($result); 
 		} 
 		else {
@@ -605,19 +652,24 @@ class NFW {
 		$this->_template_var[$name] = $value;
 	}
 
-	public function fetch($template_file) {
+	public function unassign($name) {
+		unset($this->_template_var[$name]);
+	}
+	
+	public function fetch($template_file, $local_vars = array()) {
 		if (!file_exists($template_file)) return false;
 
 		extract($this->_template_var);
+		extract($local_vars);
 		ob_start();
 		include($template_file);
 		return ob_get_clean();
 	}
 	
 	function display($tpl, $is_prerendered_content = false) {
-	    $content = ($is_prerendered_content) ? strval($tpl) : $this->fetch($this->findTemplatePath($tpl));
+	    $content = $is_prerendered_content ? strval($tpl) : $this->fetch($this->findTemplatePath($tpl));
 
-	    // Check if jQuery required by template (only for normal output
+	    // Check if jQuery required by template (only for normal output)
 	    if (!$is_prerendered_content && (strstr($content,'$(document).ready') || strstr($content,'$(function()'))) {
 	    	$this->registerResource('jquery', array('atStart' => true));
 	    }
@@ -630,11 +682,20 @@ class NFW {
 		    }
 	    }
 		else {
-		    $full_js = $full_css = '';
+			include_once(NFW_ROOT.'helpers/minify/src/Minify.php');
+			include_once(NFW_ROOT.'helpers/minify/src/CSS.php');
+			include_once(NFW_ROOT.'helpers/minify/src/JS.php');
+			include_once(NFW_ROOT.'helpers/minify/src/Converter.php');
+			$minifier_js = new MatthiasMullie\Minify\JS();
+			$minifier_css = new MatthiasMullie\Minify\CSS();
+			
+			$js_filename = $css_filename = false;
+			
 		    foreach(array_unique($this->_head_assets) as $filename) {
-		    	switch (strtolower(end(explode('.', $filename)))) {
+		    	switch (strtolower(pathinfo($filename, PATHINFO_EXTENSION))) {
 		    		case 'js':
-		    			$full_js .= "\n".file_get_contents(PROJECT_ROOT.'assets/'.$filename);
+		    			$minifier_js->add(PROJECT_ROOT.'assets/'.$filename);
+		    			$js_filename = md5($js_filename.file_get_contents(PROJECT_ROOT.'assets/'.$filename)).'.js';
 		    			break;
 		    		case 'css':
 		    			// FIX paths in css
@@ -645,10 +706,12 @@ class NFW {
 		    			$css_content = str_replace('url("', 'url("'.$dirname.'/', $css_content);
 		    			$css_content = str_replace('url(\'', 'url(\''.$dirname.'/', $css_content);
 		    			
-		    			// Return back inline images
+		    			// Return back inline images and direct url's
 		    			$css_content = str_replace($dirname.'/data:', 'data:', $css_content);
-		    			
-		    			$full_css .= "\n".$css_content;
+		    			$css_content = str_replace($dirname.'/http://', 'http://', $css_content);
+		    			$css_content = str_replace($dirname.'/https://', 'https://', $css_content);
+		    			$minifier_css->add($css_content);
+		    			$css_filename = md5($css_filename.file_get_contents(PROJECT_ROOT.'assets/'.$filename)).'.css';
 		    			break;
 		    		default:
 		    			if ($cur_assets = $this->assets($filename, true)) {
@@ -656,33 +719,38 @@ class NFW {
 		    			}
 		    	}
 		    }
+			
+		    if ($js_filename !== false) {
+		    	if (!file_exists(PROJECT_ROOT.'assets/'.$js_filename)) {
+		    		file_put_contents(PROJECT_ROOT.'assets/'.$js_filename, $minifier_js->minify());
+		    	}
+	    		$content = str_ireplace('<head>', '<head>'."\n".'<script src="'.$this->absolute_path.'/assets/'.$js_filename.'" type="text/javascript"></script>', $content);
+		    }
 		    
-		    $full_js_filename = md5($full_js).'.js';
-		    if(!file_exists(PROJECT_ROOT.'assets/'.$full_js_filename)) {
-		    	file_put_contents(PROJECT_ROOT.'assets/'.$full_js_filename, $full_js);
+		    if ($css_filename !== false) {
+				if(!file_exists(PROJECT_ROOT.'assets/'.$css_filename)) {
+			    	file_put_contents(PROJECT_ROOT.'assets/'.$css_filename, $minifier_css->minify());
+			    }
+			    $content = str_ireplace('<head>', '<head>'."\n".'<link href="'.$this->absolute_path.'/assets/'.$css_filename.'" type="text/css" rel="stylesheet" media="screen" />', $content);
 		    }
-		    $content = str_ireplace('<head>', '<head>'."\n".'<script src="'.$this->absolute_path.'/assets/'.$full_js_filename.'" type="text/javascript"></script>', $content);
-	
-		    $full_css_filename = md5($full_css).'.css';
-		    if(!file_exists(PROJECT_ROOT.'assets/'.$full_css_filename)) {
-		    	file_put_contents(PROJECT_ROOT.'assets/'.$full_css_filename, $full_css);
-		    }
-		    $content = str_ireplace('<head>', '<head>'."\n".'<link href="'.$this->absolute_path.'/assets/'.$full_css_filename.'" type="text/css" rel="stylesheet" media="screen" />', $content);
 		}
 	     
-		if (defined('NFW_LOG_GENERATED_TIME') && class_exists('FB')) {
-			// Calculate script generation time
-			FB::setOptions(array('includeLineNumbers' => false));
-		    FB::info('Generated in '.sprintf('%.3f', $this->microtime() - $this->_start_execution).' seconds, '.$this->db->get_num_queries().' queries executed');
-		}
-	    
-		if (defined('NFW_LOG_QUERIES') && class_exists('FB')) {
-			FB::setOptions(array('includeLineNumbers' => false));
-			FB::info('Executed queries:');
-			
-			foreach ($this->db->saved_queries as $q) {
-				FB::info($q[0], $q[1].' sec');
+		// Calculate script generation time
+		if (defined('NFW_LOG_GENERATED_TIME')) {
+			$str = 'Generated in '.sprintf('%.3f', $this->microtime() - $this->_start_execution).' seconds, '.$this->db->get_num_queries().' queries executed';
+			if (class_exists('ChromePhp')) {
+				ChromePhp::info($str);
 			}
+			else {
+				$content = str_ireplace('</html>', '</html>'."\n\n".'<!--'.$str.'-->', $content);
+			}
+		}
+		 
+		if (defined('NFW_LOG_QUERIES') && class_exists('ChromePhp')) {
+            ChromePhp::info('Executed queries:');
+            foreach ($this->db->saved_queries as $q) {
+                ChromePhp::info($q[0], $q[1].' sec');
+            }
 		}
 		
 	    // If a database connection was established (before this error) we close it
@@ -690,15 +758,17 @@ class NFW {
 	    exit (trim($content));
 	}
 
-    function findTemplatePath($filename, $class = '', $controler = '') {
-    	$path = str_replace('//', '/', $class.'/'.$controler.'/'.$filename);
+    function findTemplatePath($filename, $class = '') {
+    	$class = $this->getClass($class);
+    	 
+    	$path = str_replace('//', '/', $class.'/'.NFW::i()->current_controler.'/'.$filename);
     	foreach ($this->include_paths as $i) {
     		if (file_exists($i.'templates/'.$path)) {
     			return $i.'templates/'.$path;
     		}
     	}
 
-    	// Try to find template without $controler subfolder
+    	// Try to find template without `controler` subfolder
         $path = str_replace('//', '/', $class.'/'.$filename);
     	foreach ($this->include_paths as $i) {
     		if (file_exists($i.'templates/'.$path)) {
@@ -708,7 +778,7 @@ class NFW {
     	    	
     	// Try to find template of parent class
     	if ($parent_class = get_parent_class($class)) {
-    		return $this->findTemplatePath($filename, $parent_class, $controler);
+    		return $this->findTemplatePath($filename, $parent_class);
     	}
     
     	return false;
@@ -716,6 +786,22 @@ class NFW {
 	
 	
 	function stop($message = '', $output = null) {
+		if ($output == 'default') {
+			$output = isset(NFW::i()->cfg['default_error_message_mode']) ? NFW::i()->cfg['default_error_message_mode'] : 'error-page';
+		}
+		
+		$tpl = 'main.tpl';
+		
+		if ($message === 404) {
+			header("HTTP/1.0 404 Not Found");
+			$this->assign('page', array('path' => parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), 'is_error' => true, 'title' => $this->lang['Errors']['Bad_request'], 'content' => '<div class="alert alert-danger">'.$this->lang['Errors']['Page_not_found'].'</div>'));
+			$this->display($tpl);
+		}
+		elseif ($message === 'inactive') {
+			$this->assign('page', array('path' => parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), 'is_error' => true, 'title' => $this->lang['Errors']['Page_inactive'], 'content' => '<div class="alert alert-danger">'.$this->lang['Errors']['Page_inactive'].'</div>'));
+			$this->display($tpl);
+		}
+		
 		switch ($output) {
 			case 'silent':
 				$message = '';
@@ -725,61 +811,65 @@ class NFW {
 				break;
 			case 'login':
 				$this->assign('error', $message);
-				NFW::i()->login();
+				$this->login('form');
 				return;
 			case 'alert':
 				$message = '<html><script type="text/javascript">alert("'.$message.'");</script></html>';
 				break;
 			case 'active_form':
-				NFW::i()->renderJSON(array('result' => 'error', 'errors' => array('general' => $message), 'last_message' => $message));
+				$this->renderJSON(array('result' => 'error', 'errors' => array('general' => $message), 'last_message' => $message));
 				break;
 			case 'error-page':
-				NFW::i()->assign('page', array(
-					'subject' => 'Ошибка',
-					'message' => '<strong>'.$message.'</strong>'
+				$this->assign('page', array(
+					'path' => parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH),
+					'is_error' => true,
+					'title' => $this->lang['error_page_title'],
+					'content' => '<div class="alert alert-danger">'.$message.'</div>',
 				));
-				NFW::i()->display('main.tpl');
+				$this->display($tpl);
 				break;
 			case 'standalone':
-				NFW::i()->display($message, true);
+				$this->display($message, true);
 				break;
 			default:
 				break;
 		}
 
-		if (defined('NFW_LOG_GENERATED_TIME') && class_exists('FB')) {
-			// Calculate script generation time
-			FB::setOptions(array('includeLineNumbers' => false));
-		    FB::info('Generated in '.sprintf('%.3f', $this->microtime() - $this->_start_execution).' seconds, '.$this->db->get_num_queries().' queries executed');
+		if ($this->db) {
+			$queries_postfix = ', '.$this->db->get_num_queries().' queries executed';
+			$queries_saved = $this->db->saved_queries;
+			$this->db->close();
 		}
-	    
-		if (defined('NFW_LOG_QUERIES') && class_exists('FB')) {
-			FB::setOptions(array('includeLineNumbers' => false));
-			FB::info('Executed queries:');
-			
-			foreach ($this->db->saved_queries as $q) {
-				FB::info($q[0], $q[1].' sec');
+		else {
+			$queries_postfix = '';
+			$queries_saved = array();
+		}
+		
+			// Calculate script generation time
+		if (defined('NFW_LOG_GENERATED_TIME') && class_exists('ChromePhp')) {
+			ChromePhp::info('Generated in '.sprintf('%.3f', $this->microtime() - $this->_start_execution).' seconds'.$queries_postfix);
+		}
+		 
+		if (defined('NFW_LOG_QUERIES') && class_exists('ChromePhp') && !empty($queries_saved)) {
+			ChromePhp::info('Executed queries:');
+			foreach ($queries_saved as $q) {
+				ChromePhp::info($q[0], $q[1].' sec');
 			}
 		}
-				
-	    if ($this->db) $this->db->close();
-	    
+		
 	    exit ($message);
 	}
 	
 	function errorHandler($error_number, $message, $file, $line, $db_error = false) {
-		if (class_exists('FB')) {
-			FB::setOptions(array('includeLineNumbers' => false));
-			FB::group('Error: '.$message,array('Collapsed' => true,'Color' => '#FF0000'));
-			FB::info($file, 'File');
-			FB::info($line, 'Line');
-			if (isset($db_error['error_msg'])) {
-				FB::info($db_error['error_msg'], 'Database reported');
-				if (isset($db_error['error_sql']) && $db_error['error_sql'] != '') {
-					FB::info($db_error['error_sql'], 'Failed query');
+		if (class_exists('ChromePhp')) {
+			ChromePhp::error('Error: '.$message);
+			ChromePhp::error('File: '.$file.':'.$line);
+			if (isset($db_error['error_msg']) && $db_error['error_msg']) {
+				ChromePhp::error('Database reported: '.$db_error['error_msg']);
+				if (isset($db_error['error_sql']) && $db_error['error_sql']) {
+					ChromePhp::error('Failed query: '.$db_error['error_sql']);
 				}
 			}
-			FB::groupEnd();
 		}
 				
 		return true;

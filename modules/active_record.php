@@ -1,19 +1,20 @@
 <?php
-/***********************************************************************
-  Copyright (C) 2010 Andrew nyuk Marinov (aka.nyuk@gmail.com)
-  $Id$  
+// $Id$
 
-   Базовый класс active_record 
-  
- ************************************************************************/
+/**
+ * Абстрактный класс active_record.
+ *
+ * @copyright 2009-2018 Andrey nyuk Marinov
+ * @author Andrey nyuk Marinov (aka.nyuk@gmail.com)
+ */
 
 abstract class active_record extends base_module {
 	var $attributes = array();
-	var $record = false;		//	Current record
-	protected $db_record = false;			// Last loaded DB-record
-	protected $db_table = false;			// DB Tablename with stored records			
+	var $record = false;				//	Current record
+	protected $db_record = false;		// Last loaded DB-record
+	protected $db_table = false;		// DB Tablename with stored records			
 		
-	function __construct($record_id = false) {
+	function __construct($record_id = false, $params = array()) {
 		if ($this->db_table === false) {
 			$this->db_table = get_class($this);
 		}
@@ -25,10 +26,12 @@ abstract class active_record extends base_module {
 		}
 
 		// Load record
-		if ($record_id !== false) return $this->load($record_id);
+		if ($record_id !== false) {
+		    return $this->load($record_id, $params);
+		}
 		
 		// Fill new record default values
-		$this->record['id'] = false;
+		$this->record['id'] = 0;
 		foreach ($this->attributes as $varname=>$attributes) {
 			$this->record[$varname] = isset($attributes['default']) ? $attributes['default'] : null;
 		}
@@ -37,10 +40,23 @@ abstract class active_record extends base_module {
    	}
 
    	/**
+   	 * Merge main attributes with service attributes
+   	 */
+   	protected function loadServicettributes() {
+   		$this->attributes = array_merge($this->attributes, $this->service_attributes);
+   		
+   		if ($this->record['id'] === false) {
+   			foreach ($this->service_attributes as $varname=>$attributes) {
+	   			$this->record[$varname] = isset($attributes['default']) ? $attributes['default'] : null;
+	   		}
+   		}   		
+   	}
+   	
+   	/**
    	 * Default record loader
    	 * 
-   	 * @param $id		Record ID
-   	 * @return Array 	Return loaded $this->record 
+   	 * @param $id		int 	Record ID
+   	 * @return 			Array 	Return loaded $this->record 
    	 */
 	protected function load($id) {
 		if (!$result = NFW::i()->db->query_build(array('SELECT' => '*', 'FROM' => $this->db_table, 'WHERE' => 'id='.intval($id)))) {
@@ -48,7 +64,7 @@ abstract class active_record extends base_module {
 	    	return false;
 		}
 	    if (!NFW::i()->db->num_rows($result)) {
-	    	$this->error('Record not found.', __FILE__, __LINE__);
+	    	$this->error('Record not found ('.$id.')', __FILE__, __LINE__);
 	    	return false;
 	    }
 	    $this->db_record = $this->record = NFW::i()->db->fetch_assoc($result);
@@ -58,6 +74,8 @@ abstract class active_record extends base_module {
 
 	protected function unload() {
 		$this->record = array('id' => false);
+		$this->db_record = null;
+		
 		foreach ($this->attributes as $varname=>$attributes) {
 			$this->record[$varname] = isset($attributes['default']) ? $attributes['default'] : null;
 		}
@@ -65,73 +83,96 @@ abstract class active_record extends base_module {
 		return true;
 	}
 	
-	protected function searchArrayAssoc($array = array(), $value = false, $keyname = 'id') {
-		foreach ($array as $a) {
-			if ($a[$keyname] == $value) return $a;
-		}
-
-		return false;
-	}
-	
-	protected function save() {
-		if ($this->record['id']) {
-			// Check if record updated
+	protected function save($attributes = array()) {
+		$attributes = empty($attributes) ? $this->attributes : $attributes;
+		$is_updating = $this->record['id'] ? true : false;
+		
+		if ($is_updating) {
+			// Check if record need to update
 			$update = array();
-			foreach ($this->attributes as $varname=>$foo) {
+			foreach (array_keys($attributes) as $varname) {
 				$is_modified = false;
-				$type = (isset($this->attributes[$varname]['type'])) ? $this->attributes[$varname]['type'] : 'str'; 
+				$type = isset($attributes[$varname]['type']) ? $attributes[$varname]['type'] : 'str';
 				switch ($type) {
 					case 'str':
 					case 'textarea':
-						if (strcmp($this->record[$varname], $this->db_record[$varname]) != 0) $is_modified = true;							
+						if (strcmp($this->record[$varname], $this->db_record[$varname]) != 0) $is_modified = true;
 						break;
 					default:
 						if ($this->record[$varname] != $this->db_record[$varname]) $is_modified = true;
 						break;
 				}
-				
+			
 				if (!$is_modified) continue;
-				
+			
 				$update[] = '`'.$varname.'` = \''.NFW::i()->db->escape($this->record[$varname]).'\'';
 			}
-			if (empty($update)) {
-				return false;
-			}
-
-			if (!NFW::i()->db->query_build(array('UPDATE' => $this->db_table, 'SET' => implode(', ', $update), 'WHERE' => 'id='.$this->record['id']))) { 
+			if (empty($update)) return false;
+			
+			if (!NFW::i()->db->query_build(array('UPDATE' => $this->db_table, 'SET' => implode(', ', $update), 'WHERE' => 'id='.$this->record['id']))) {
 				$this->error('Unable to update record', __FILE__, __LINE__, NFW::i()->db->error());
 				return false;
 			}
-			
-			$this->reload();
-			return true;
 		}
 		else {
-			foreach ($this->attributes as $varname=>$foo) {
+		    $insert = $values = array();
+			foreach (array_keys($attributes) as $varname) {
 				$insert[] = '`'.$varname.'`';
 				$values[] = '\''.NFW::i()->db->escape($this->record[$varname]).'\'';
 			}
-			
+				
 			if (!NFW::i()->db->query_build(array('INSERT' => implode(', ', $insert), 'INTO' => $this->db_table, 'VALUES' => implode(', ', $values)))) {
 				$this->error('Unable to insert record', __FILE__, __LINE__, NFW::i()->db->error());
 				return false;
-				
 			}
 			$this->record['id'] = NFW::i()->db->insert_id();
-			$this->reload();
-			return true;
 		}
+		
+		// Add service information.
+		// Only if presented all needfull fields
+		$sql = 'SHOW COLUMNS FROM '.NFW::i()->db->prefix.$this->db_table;
+		if (!$result = NFW::i()->db->query($sql)) {
+			$this->error('Unable to fetch table information.', __FILE__, __LINE__, NFW::i()->db->error());
+			return false;
+		}
+		$available_table_rows = array();
+		while($row = NFW::i()->db->fetch_assoc($result)) {
+			$available_table_rows[] = $row['Field'];
+		}
+		
+		if ($is_updating) {
+			$diff = array_diff(array('edited_by', 'edited_username', 'edited_ip', 'edited'), $available_table_rows);
+			$set = 'edited_by='.NFW::i()->user['id'].', edited_username=\''.NFW::i()->db->escape(NFW::i()->user['username']).'\', edited_ip=\''.logs::get_remote_address().'\', edited='.time();
+		}
+		else {
+			$diff = array_diff(array('posted_by', 'posted_username', 'poster_ip', 'posted'), $available_table_rows);
+			$set = 'posted_by='.NFW::i()->user['id'].', posted_username=\''.NFW::i()->db->escape(NFW::i()->user['username']).'\', poster_ip=\''.logs::get_remote_address().'\', posted='.time();
+		}
+
+		if (empty($diff)) {
+			if (!NFW::i()->db->query_build(array('UPDATE' => $this->db_table, 'SET' => $set, 'WHERE' => 'id='.$this->record['id']))) {
+				$this->error('Unable to add service information', __FILE__, __LINE__, NFW::i()->db->error());
+				return false;
+			}
+		}
+		
+		$this->reload();
+		
+		return true;		
 	}
 	
-	public function reload($id = false) {
-		return $this->load($id ? $id : $this->record['id']); 
+	public function reload($id = false, $params = null) {
+		return $this->load($id ? $id : $this->record['id'], $params); 
 	}
 	
 	/* Remove current record
 	 * 
 	 */
-	function delete() {
-		if (!$this->record['id']) return false;
+	public function delete() {
+		if (!$this->record['id']) {
+			$this->error('Record not loaded', __FILE__, __LINE__);
+			return false;
+		}
 		
 		if (!NFW::i()->db->query_build(array('DELETE' => $this->db_table, 'WHERE' => 'id='.$this->record['id']))) { 
 			$this->error('Unable to delete record', __FILE__, __LINE__, NFW::i()->db->error());
@@ -142,55 +183,66 @@ abstract class active_record extends base_module {
 		return true;
 	}
 	
-	function validate($record = false, $attributes = false) {
-    	return parent::validate(($record) ? $record : $this->record, ($attributes) ? $attributes : $this->attributes);
-    }
-
-    public function formatVisibleValue($value, $attribute) {
-    	$prefix = isset($attribute['prefix']) ? $attribute['prefix'] : '';
-    	 
+	public function validate($record = false, $attributes = false) {
+		$record = $record ? $record : $this->record;
+		$attributes = $attributes ? $attributes : $this->attributes;
+		
+		$errors = parent::validate($record, $attributes);
     	
-        switch (isset($attribute['type']) ? $attribute['type'] : 'default') { 
-        	case 'bool':
-    			return $value ? 'Да' : 'Нет';
-        	case 'date':
-    			return $prefix.((isset($attribute['withTime']) && $attribute['withTime']) ? date('d.m.Y H:I:S', intval($value)) : date('d.m.Y', intval($value)));
-        	case 'select':
-        		if ($o = $this->searchArrayAssoc($attribute['options'], $value)) {
-        			return $prefix.(isset($o['desc']) ? $o['desc'] : $value);
-        		}
-        		elseif (isset($attribute['unknown_value'])) {
-        			return $prefix.$attribute['unknown_value'];
-        		}
-        	default:
-	    		return $prefix.$value;
-    	}    	
-    }
-    
+		// Validate 'unique' values
+		foreach($attributes as $varname=>$attribute) {
+			if (isset($errors[$varname])) continue;	// Already wrong
+			if (!isset($attribute['unique']) || !$attribute['unique'] || !isset($record[$varname]) || !$record[$varname]) continue;
+			
+    		$error_varname = isset($attribute['desc']) ? $attribute['desc'] : $varname;
+			$query = array(
+				'SELECT' 	=> '*',
+				'FROM'		=> $this->db_table,
+				'WHERE'		=> $varname.'=\''.NFW::i()->db->escape($record[$varname]).'\''
+			);
+			if ($record['id']) {
+				$query['WHERE'] .= ' AND id<>'.$record['id'];
+			}
+			if (!$result = NFW::i()->db->query_build($query)) {
+				$this->error('Unable to validate '.$varname, __FILE__, __LINE__, NFW::i()->db->error());
+				return false;
+			}
+    	
+			if (NFW::i()->db->num_rows($result)) {
+				$errors[$varname] = NFW::i()->lang['Errors']['Dupe1'].$error_varname.NFW::i()->lang['Errors']['Dupe2'];
+			}
+		}
+		
+		return $errors;
+	}
+
     /**
      * Format $data by $attributes rules and store in $this->record
-     * 
+     *
      * @param array $data to format
      * @param array $attributes array with rules
+     * @param bool $skip_store
      * @return array with affected fields
      */
-    public function formatAttributes($data, $attributes = false) {
+    public function formatAttributes($data, $attributes = array(), $skip_store = false) {
     	$result = array();
     	
-    	foreach($attributes == false ? $this->attributes : $attributes as $varname => $a) {
+    	foreach (empty($attributes) ? $this->attributes : $attributes as $varname => $a) {
     		if (!isset($data[$varname])) continue;
-    		$result[$varname] = $this->formatAttribute($data[$varname], $a);
+    		$result[$varname] = $this->formatAttribute($data[$varname], $a, $varname);
     	}
     	
     	// Store in $this->record
-    	foreach ($result as $varname=>$value) {
-    		$this->record[$varname] = $value;
+    	if (!$skip_store) {
+	    	foreach ($result as $varname=>$value) {
+	    		$this->record[$varname] = $value;
+	    	}
     	}
     	 
     	return $result;
     }
     
-    function formatAttribute($value, $rules) {
+    public function formatAttribute($value, $rules) {
     	switch ($rules['type']) {
     		case 'custom':
     			break;

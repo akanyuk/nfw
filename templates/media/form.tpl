@@ -1,267 +1,384 @@
 <?php
-	NFW::i()->registerResource('jquery.activeForm');
-	NFW::i()->registerResource('jquery.cookie');
-	NFW::i()->registerFunction('ui_message');
-	
-	$lang_media = NFW::i()->getLang('media');
+/**
+ * @desc Media Form with multiple uploads and sorting
+ * @desc Records always preloaded by form template. Newer reloading (no 'load' event)
+ * @version 2018.12.05
+ * @var object $Module
+ * @var string $session_id 
+ * @var int $owner_id
+ * @var string $owner_class
+ * @var int $MAX_FILE_SIZE
+ * @var int $MAX_SESSION_SIZE
+ * @var int $image_max_x
+ * @var int $image_max_y
+ * @var int $tmb_width
+ * @var int $tmb_height
+ */
+NFW::i()->registerResource('jquery.file-upload');
+NFW::i()->registerResource('jquery.activeForm');
+NFW::i()->registerFunction('limit_text');
+
+$lang_media = NFW::i()->getLang('media');
+
+// Prefetch records and calculate session size
+$records = array();
+$session_size = 0;
+foreach ($owner_id ? $Module->getFiles($owner_class, $owner_id, array('order_by' => 'position')) : array() as $record) {
+	$session_size += $record['filesize'];
+	$records[] = $record;
+}
+
+// Generate icon background
+$image = imagecreatetruecolor($tmb_width, $tmb_height);
+imagesavealpha($image, true);
+$transparent = imagecolorallocatealpha($image, 0, 0, 0, 127);
+imagefill($image, 0, 0, $transparent);
+ob_start();
+imagepng($image);
+$icon_container_img = 'data:image/png;base64,'.base64_encode(ob_get_clean());
+imagedestroy($image);
 ?>
-<script type="text/javascript">
-$(document).ready(function(){
-	/** 
-	 * Media Form
-	 * @date: 2014.11.10
-	 */
-
-	// Set session cookie
-	$.cookie('<?php echo $session_id?>', '<?php echo $cookie_data?>', { path: '/' });
-
-	if ($.uniform) {
-		$.uniform.defaults.fileDefaultHtml = '<?php echo $lang_media['fileDefaultHtml']?>';
-		$.uniform.defaults.fileButtonHtml = '<?php echo $lang_media['fileButtonHtml']?>';
-	}
-	 
-	 <?php if (isset($allow_reload) && $allow_reload): ?>
-	 var reloadForm = $('form[id="reload-<?php echo $session_id?>"]');
-	 reloadForm.ajaxForm({
-		beforeSubmit: function(a,f,o) {
-			 o.dataType = "json";
-		},
-		success: function(response) {
-			if (response && response.result && response.result == 'error') {
-				if (typeof(response.errors) == 'object') {
-					$.each(response.errors, function(i, e) {
-						if (i == 'general') {
-							alert(e);
-						}
-					});
-				}
-			}
-			else if (response && response.result && response.result == 'success') {
-				form.resetForm().trigger('cleanErrors').trigger('load');
-			}
-		}
-	});
-	reloadForm.find('input[name="local_file"]').change(function() {
-		form.trigger('save-comments');
-		reloadForm.submit();
-    });
-	<?php endif; ?>
-		 
+<script>
+$(function () {
 	var form = $('form[id="<?php echo $session_id?>"]');
-	
-	form.activeForm({
-		success: function(response) {
-			form.resetForm().trigger('cleanErrors').trigger('load');
-		}
-	});
+	var mediaContainer = form.find('#media-list');
+	var propertiesDialog = $('div[id="<?php echo $session_id?>-properties-dialog"]');
 
-	form.find('input[name="local_file"]').change(function() {
-		form.trigger('save-comments').submit();
+	form.trigger('reset');
+	
+	form.find('input[type="file"]').fileupload({
+        dataType: 'json',
+        dropZone: form.find('#dropzone'),
+		add: function (e, data) {
+			$.each(data.files, function (index, file) {
+				form.find('#uploading-status').show();	// show log
+				form.find('#uploading-status > p').slice(0, -5).remove();	// reduce log
+				data.context = $('<p/>').html('<div class="status"><span class="fa fa-spinner"></span></div><div class="log"><?php echo $lang_media['Uploading']?>: ' + file.name + '</div>').appendTo(form.find('#uploading-status'));
+			});
+			
+			data.submit();
+		},    
+        done: function (e, data) {
+            var response = data.result;
+
+            data.context.find('.status').remove();	// remove spinner
+            
+            if (response.result == 'error') {
+            	data.context.append('<div class="text-danger error">' + response.last_message + '</div>');
+                return;
+            }
+
+            data.context.prepend('<div class="text-success status"><span class="fa fa-check"></span></div>');
+
+            if (response.type == 'image') {
+				var tpl = form.find('#record-image-template').html();
+            }
+            else {
+            	var tpl = form.find('#record-file-template').html();
+            }
+            
+			tpl = tpl.replace(/%id%/g, response.id);
+			tpl = tpl.replace(/%basename%/g, response.basename);
+			tpl = tpl.replace('%type%', response.type); 
+			tpl = tpl.replace('%url%', response.url);
+			tpl = tpl.replace('%tmbsrc%', 'src="' + response.tmb_prefix + '<?php echo $tmb_width?>x<?php echo $tmb_height?>-cmp.' + response.extension + '"');
+			tpl = tpl.replace('%iconsrc%', 'src="' + response.icons['64x64'] + '"');
+			tpl = tpl.replace('%comment%', response.comment);
+			tpl = tpl.replace('%filesize%', response.filesize_str);
+			tpl = tpl.replace('%posted%', response.posted);
+			mediaContainer.append(tpl);
+			
+            form.find('*[id="session-size"]').text(number_format(response.iSessionSize/1048576, 2, '.', ' '));
+        }
     });
 
-	if ($.uniform) {
-		form.find('input[name="local_file"]').uniform().addClass('uniformed');
-	}
-	
-	form.bind('load', function(){
-		$.get("<?php echo NFW::i()->base_path.'media.php?action=list&owner_class='.$owner_class.'&owner_id='.$owner_id.(NFW::i()->getUI() ? '&ui='.NFW::i()->getUI() : '').'&ts='?>" + new Date().getTime(), function(response){
-			if (response.iTotalRecords == 0) {
-				form.find('*[id="media-list"]').hide();
+	mediaContainer.sortable({
+		update: function(event, ui) {
+ 	 		var aPositions = [];
+ 	 		var iCurPos = 1;
+ 	 		mediaContainer.find('[role="record"]').each(function(){
+ 				aPositions.push({ 'id': $(this).attr('id'), 'position': iCurPos++ });
+ 			});
+
+			$.post('<?php echo NFW::i()->base_path.'media.php?action=sort&session_id='.$session_id?>', { 'positions': aPositions }, function(response){
+				if (response == 'success') {
+					$.jGrowl('<?php echo $lang_media['Messages']['Changes Saved']?>');
+				}
+				else {
+					alert(response);
+				}
+
 				return false;
-			}
-
-			form.find('*[id="session_size"]').text(response.iSessionSize_str);
-			
-			var rowTemplate = '';
-			if (typeof(response.sRowTemplate) != 'undefined' && response.sRowTemplate) {
-				rowTemplate = response.sRowTemplate;
-			}
-			else {
-				<?php if ($owner_id): ?>
-				rowTemplate = '<tr class="zebra"><td style="white-space: nowrap;"><a href="%url%" target="_blank" type="%type%"><img src="%icon%"/> <span style="position: relative; top: -4px;">%basename%</span></a></td><td style="white-space: nowrap;">%filesize_str%</td><td style="white-space: nowrap;">%posted_str%</td><td><input id="%id%" rel="comment" type="text" style="width: 100%" value="%comment%" /></td><td style="white-space: nowrap;"><a rel="reload-media-file" href="#" id="%id%" class="nfw-button nfw-button-small" icon="ui-icon-arrowrefresh-1-e" title="<?php echo $lang_media['Reload']?>"></a><a rel="remove-media-file" href="#" id="%id%" class="nfw-button nfw-button-small" icon="ui-icon-close" title="<?php echo $lang_media['Remove']?>"></a></td></tr>';
-				<?php else: ?>
-				rowTemplate = '<tr class="zebra"><td style="white-space: nowrap;"><a href="%url%" target="_blank" type="%type%"><img src="%icon%"/> <span style="position: relative; top: -4px;">%basename%</span></a></td><td style="white-space: nowrap;">%filesize_str%</td><td><input id="%id%" rel="comment" type="text" style="width: 100%" value="%comment%" /></td><td style="white-space: nowrap;"><a rel="reload-media-file" href="#" id="%id%" class="nfw-button nfw-button-small" icon="ui-icon-arrowrefresh-1-e" title="<?php echo $lang_media['Reload']?>"></a><a rel="remove-media-file" href="#" id="%id%" class="nfw-button nfw-button-small" icon="ui-icon-close" title="<?php echo $lang_media['Remove']?>"></a></td></tr>';
-				<?php endif; ?>
-			}
-
-			form.find('*[id="media-list-rows"]').empty();
-			$.each(response.aaData, function(i, r){
-				var tpl = rowTemplate.replace(/%id%/g, r.id);
-				tpl = tpl.replace('%type%', r.type); 
-				tpl = tpl.replace('%icon%', r.icon);
-				tpl = tpl.replace('%icon_medium%', r.icon_medium);
-				tpl = tpl.replace('%url%', r.url);
-				tpl = tpl.replace('%filesize_str%', r.filesize_str);
-				tpl = tpl.replace('%posted_str%', r.posted_str);
-				tpl = tpl.replace('%basename%', r.basename.substr(0,48));
-				tpl = tpl.replace('%comment%', r.comment);
-				
-				form.find('*[id="media-list-rows"]').append(tpl);
-			});
-
-			<?php if (!isset($allow_reload) || !$allow_reload): ?>
-			form.find('*[id="media-list-rows"]').find('a[rel="reload-media-file"]').remove();
-			<?php endif; ?>
-
-			if ($.uniform) {
-				form.find('input:not(.uniformed)').uniform().addClass('uniformed');
-			}
-
-			if ($.colorbox) {
-				form.find('a[type="image"]').colorbox({ maxWidth:'96%', maxHeight:'96%', 'current' : '{current} / {total}' });
-			}
-			
-			form.find('*[id="media-list"]').show();
-			$(document).trigger('refresh');
-					
-		}, 'json');
-	});
-
-	<?php if (isset($allow_reload) && $allow_reload): ?>
-	$(document).off('click', 'a[rel="reload-media-file"]').on('click', 'a[rel="reload-media-file"]', function(){
-		reloadForm.find('input[name="file_id"]').val(this.id);
-		reloadForm.find('input[name="local_file"]').trigger('click');
-		return false;
-	});
-	<?php endif; ?>
-	
-	$(document).off('click', 'a[rel="remove-media-file"]').on('click', 'a[rel="remove-media-file"]', function(){
-		<?php if ($owner_id): ?>
-		if (!confirm('Удалить файл вложения?')) return false;
-		<?php endif; ?>
-
-		var currentForm = $(this).closest('form');
-		currentForm.trigger('save-comments');
-		
-		var file_id = $(this).attr('id');
-		$.post('<?php echo NFW::i()->base_path.'media.php?action=remove&owner_class='.$owner_class.'&owner_id='.$owner_id?>', { 'file_id': file_id }, function(){
-			currentForm.trigger('load');
-		});
-		
-		return false;
-	});
-	
-	form.bind('save-comments', function(){
-		var commentsArray = [];
-		form.find('input[rel="comment"]').each(function(){
-			commentsArray.push({ 'file_id': $(this).attr('id'), 'comment': $(this).val() });
-		});
-		
-		if (commentsArray.length) {
-			$.ajax({
-				type: 'POST', async: false,
-				url: '<?php echo NFW::i()->base_path.'media.php?action=update_comment&owner_class='.$owner_class.'&owner_id='.$owner_id?>',
-				data: { 'comments': commentsArray }
-			});
+ 			});
 		}
 	});
+		
+	propertiesDialog.modal({ 'show': false });
 
-	form.bind('unload', function(){
-		$.removeCookie('<?php echo $session_id?>', { path: '/' });
+	$(document).on('click', '[role="<?php echo $session_id?>-file-properties"]', function(){
+		if ($(this).data('type') == 'image') { 
+			propertiesDialog.find('#type-image').show();
+			propertiesDialog.find('#type-file').hide();
+		}
+		else {
+			propertiesDialog.find('#type-image').hide();
+			propertiesDialog.find('#type-file').show();
+		}
+
+		propertiesDialog.find('[id="preview"]').attr('src', $(this).attr('href'));
+		propertiesDialog.find('[id="url"]').html('<a href="' + $(this).attr('href') + '" target="_blank">' + $(this).data('basename') + '</a>');
+		propertiesDialog.find('[id="filesize"]').text($(this).data('filesize'));
+		propertiesDialog.find('[id="posted"]').text(formatDateTime($(this).data('posted'), true, true));
+
+		propertiesDialog.find('[name="record_id"]').val($(this).closest('[role="record"]').attr('id'));
+		propertiesDialog.find('[name="basename"]').val($(this).data('basename'));
+		propertiesDialog.find('[name="comment"]').val( $(this).closest('[role="record"]').find('#comment').text());		
+
+		propertiesDialog.modal('show');
+		return false;
 	});
+
+	propertiesDialog.find('form[role="update"]').each(function(){
+ 		$(this).activeForm({
+ 	 		action: '<?php echo NFW::i()->base_path?>media.php?action=update&record_id=' + propertiesDialog.data('record-id'),
+ 			success: function(response) {
+ 				var oRow = mediaContainer.find('[role="record"][id="' + propertiesDialog.find('[name="record_id"]').val() + '"]');
+ 				oRow.find('#comment').text(response.comment);
+ 				oRow.find('[id="basename"]').text(response.basename);
+ 				oRow.find('a[role="<?php echo $session_id?>-file-properties"]').attr('href', response.url);
+ 				oRow.find('a[role="<?php echo $session_id?>-file-properties"]').data('basename', response.basename); 
+
+ 				propertiesDialog.modal('hide');	 			
+ 			}
+ 		});
+	});
+
+
+	propertiesDialog.find('[role="save"]').click(function(){
+		propertiesDialog.find('form[role="update"]:visible').submit();
+		return false;
+	});
+
+	propertiesDialog.find('[role="delete"]').click(function(){
+		var recordID = propertiesDialog.find('[name="record_id"]').val();
+		if (!recordID) return;
+		
+		if (!confirm('<?php echo $lang_media['Remove confirm']?>')) return false;
+
+		$.post('<?php echo NFW::i()->base_path?>media.php?action=remove', { 'file_id': recordID }, function(response){
+			if (response != 'success') {
+				alert(response);
+				return;
+			}
+			
+			mediaContainer.find('[role="record"][id="' + recordID + '"]').remove();
+			propertiesDialog.modal('hide');
+		});
+		
+		return false;
+	});
+
+
+	// Dropzones for multiple forms
 	
-	<?php if ($owner_id && (!isset($lazy_load) || !$lazy_load) ): ?>
-	form.trigger('load');
-	<?php endif; ?>
+	$(document).bind('dragover', function (e) {
+		var dropZones = $('.dropzone');
+		var timeout = window.dropZoneTimeout;
+		
+		if (timeout) {
+			clearTimeout(timeout);
+		} else {
+			dropZones.addClass('in');
+		}
+		
+		var hoveredDropZone = $(e.target).closest(dropZones);
 
-	$(window).on('beforeunload', function() {
-		form.trigger('unload');
-	});
+		dropZones.not(hoveredDropZone).removeClass('hover');
+
+		hoveredDropZone.addClass('hover');
+		
+		window.dropZoneTimeout = setTimeout(function () {
+			window.dropZoneTimeout = null;
+			dropZones.removeClass('in hover');
+		}, 100);
+	});	
 });
 </script>
 <style>
-	<?php if (NFW::i()->getUI() == 'bootstrap'): ?>
-		form#<?php echo $session_id?> .alert-cond { padding: 10px; }
-		form#<?php echo $session_id?> .alert-cond P { font-size: 12px; line-height: 13px; }
-		
-		form#<?php echo $session_id?> table#media-list td { vertical-align: middle; }
-		form#<?php echo $session_id?> table#media-list a { text-decoration: none !important; }
-		form#<?php echo $session_id?> table#media-list input { margin-bottom: 0; }
-	<?php else: ?>
-		/* uniform modify */
-		form#<?php echo $session_id?> div.uploader { width: 190px; }
-		form#<?php echo $session_id?> div.uploader span.filename { width: 85px; }
-		form#<?php echo $session_id?> div.info-block { margin-left: 200px; font-size: 85% }
-	<?php endif; ?>
+	FORM#<?php echo $session_id?> .dropzone { display: none; background-color: #b6efb6; border-color: #769e84; padding-top: 50px; padding-bottom: 50px; text-align: center; font-weight: bold; }
+	FORM#<?php echo $session_id?> .dropzone.in { display: block; }
+	FORM#<?php echo $session_id?> .dropzone.hover { display: block; background: #46af46; }
+	FORM#<?php echo $session_id?> .dropzone.fade { -webkit-transition: all 0.3s ease-out; -moz-transition: all 0.3s ease-out; -ms-transition: all 0.3s ease-out; -o-transition: all 0.3s ease-out; transition: all 0.3s ease-out; opacity: 1;	}
+
+	FORM#<?php echo $session_id?> .uploading-status { margin-top: 20px; background-color: #f4f4f4; border: 1px solid #cacaca; border-radius: 4px; padding: 10px; }
+	FORM#<?php echo $session_id?> .uploading-status .log { white-space: nowrap; overflow: hidden; margin-right: 20px; font-size: 14px; }
+	FORM#<?php echo $session_id?> .uploading-status .status { float: right; position: absolute; right: 24px; }
+	FORM#<?php echo $session_id?> .uploading-status .error { overflow: auto; white-space: normal; font-size: 90%; }
+
+	FORM#<?php echo $session_id?> .thumbnail .overlay { position: absolute; top: 0; left: 0; width: 100%; text-align: center; padding: 20px 20px 0 20px; }
+	FORM#<?php echo $session_id?> .thumbnail .icon { }
+	FORM#<?php echo $session_id?> .thumbnail .basename { display: block; white-space: nowrap; overflow: hidden; font-size: 13px; }
+	FORM#<?php echo $session_id?> .thumbnail .basename a:hover, FORM#<?php echo $session_id?> .thumbnail .basename a:focus { text-decoration: none; }
+	
+	DIV[id="<?php echo $session_id?>-properties-dialog"] .preview-container { text-align: center; }
+	DIV[id="<?php echo $session_id?>-properties-dialog"] #preview { max-height: 600px; max-width: 600px; }
+	DIV[id="<?php echo $session_id?>-properties-dialog"] FORM[role="update"] LABEL { padding-top: 0; margin-bottom: 0; }
 </style>
 
-<?php if (isset($allow_reload) && $allow_reload): ?>
-<form id="reload-<?php echo $session_id?>" style="display: none;" method="POST" action="<?php echo NFW::i()->base_path.'media.php?action=reload'?>" enctype="multipart/form-data">
-	<input type="hidden" name="MAX_FILE_SIZE" value="<?php echo $MAX_FILE_SIZE?>" />
-	<input type="hidden" name="file_id" value="" />
-	<input type="file" name="local_file" />
-</form>						
-<?php endif; ?>
+<div id="<?php echo $session_id?>-properties-dialog" class="modal fade">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+				<h4 class="modal-title"><?php echo $lang_media['File properties']?></h4>
+			</div>
+			
+			<div class="modal-body" id="type-image">
+				<div class="row">
+					<div class="col-md-9 preview-container"><img id="preview" alt="" /></div>
+					<div class="col-md-3">
+						<form role="update" class="active-form">
+							<input type="hidden" name="record_id" />
+							
+							<div class="form-group">
+								<label><strong><?php echo $lang_media['File']?></strong></label>
+								<div id="url"></div>	
+							</div>
 
-<?php if(NFW::i()->getUI() == 'jqueryui'): ?>
-<form id="<?php echo $session_id?>" action="<?php echo NFW::i()->base_path.'media.php?action=upload'?>" enctype="multipart/form-data">
-	<input type="hidden" name="owner_id" value="<?php echo $owner_id?>" />
-	<input type="hidden" name="owner_class" value="<?php echo $owner_class?>" />
-	<input type="hidden" name="MAX_FILE_SIZE" value="<?php echo $MAX_FILE_SIZE?>" />
+							<div class="form-group">
+								<label><strong><?php echo $lang_media['Filesize']?></strong></label>
+								<div id="filesize"></div>	
+							</div>
 
-	<div style="float: left;">
-		<input type="file" name="local_file" />
-		<div data-rel="error-info" id="local_file" class="error-info"></div>
-	</div>
-		
-	<?php ob_start(); ?>
-	<div><?php echo $lang_media['MaxFileSize']?>: <strong><?php echo number_format($MAX_FILE_SIZE / 1048576, 2, '.', ' ')?><?php echo $lang_media['mb']?></strong></div>
-	<div><?php echo $lang_media['MaxSessionSize']?>: <strong><?php echo number_format($MAX_SESSION_SIZE / 1048576, 2, '.', ' ')?><?php echo $lang_media['mb']?></strong></div>
-	<?php if (!$owner_id): ?>
-		<div><?php echo $lang_media['CurrentSessionSize']?>: <strong><span id="session_size">0</span><?php echo $lang_media['mb']?></strong></div>
-	<?php endif; ?>
-	<?php $info_text = ob_get_clean(); ?>
-	<div class="info-block">
-		<?php echo ui_message(array('text' => $info_text))?>
-	</div>
-	<div style="clear: both;"></div>
-    
-	<table id="media-list" class="main-table" style="display: none;">
-		<thead>
-			<tr>
-				<th><?php echo $lang_media['Filename']?></th>
-				<th><?php echo $lang_media['Filesize']?></th>
-				<?php if ($owner_id): ?>
-				<th><?php echo $lang_media['Uploaded']?></th>
-				<?php endif; ?>
-				<th style="width: 100%;"><?php echo $lang_media['Comment']?></th>
-				<th>&nbsp;</th>
-			</tr>
-		</thead>
-		<tbody id="media-list-rows"></tbody>
-	</table>
-</form>
-<?php elseif (NFW::i()->getUI() == 'bootstrap'): ?>
-<form id="<?php echo $session_id?>" class="form-horizontal" action="<?php echo NFW::i()->base_path.'media.php?action=upload'?>" enctype="multipart/form-data"><fieldset>
-	<input type="hidden" name="owner_id" value="<?php echo $owner_id?>" />
-	<input type="hidden" name="owner_class" value="<?php echo $owner_class?>" />
-	<input type="hidden" name="MAX_FILE_SIZE" value="<?php echo $MAX_FILE_SIZE?>" />
+							<div class="form-group">
+								<label><strong><?php echo $lang_media['Uploaded']?></strong></label>
+								<div id="posted"></div>	
+							</div>
+							<?php echo active_field(array('name' => 'basename', 'attributes'=>$Module->attributes['basename'], 'desc' => $lang_media['Filename'], 'vertical' => true))?>
+							<?php echo active_field(array('name' => 'comment', 'attributes'=>$Module->attributes['comment'], 'desc' => $lang_media['Comment'], 'vertical' => true))?>
+						</form>
+					</div>
+				</div>
+			</div>
+			
+			<div class="modal-body" id="type-file">
+				<form role="update" class="form-horizontal active-form">
+					<input type="hidden" name="record_id" />
+				
+					<div class="form-group">
+						<label for="title" class="col-md-3 control-label"><strong><?php echo $lang_media['File']?></strong></label>
+						<div class="col-md-9">
+							<div id="url"></div>
+						</div>			
+					</div>
 
-	<div class="form-group" id="local_file">
-		<div class="col-md-offset-3 col-md-4">
-			<input type="file" name="local_file" />
-			<span class="help-block"></span>
-		</div>
-		<div class="col-md-5">
-			<div class="alert alert-warning alert-cond">
-				<p style="font-size: 80%;"><?php echo $lang_media['MaxFileSize']?>: <strong><?php echo number_format($MAX_FILE_SIZE / 1048576, 2, '.', ' ')?>Mb</strong></p>
-				<p style="font-size: 80%;"><?php echo $lang_media['MaxSessionSize']?>: <strong><?php echo number_format($MAX_SESSION_SIZE / 1048576, 2, '.', ' ')?>Mb</strong></p>
-				<p style="font-size: 80%;"><?php echo $lang_media['CurrentSessionSize']?>: <strong><span id="session_size">0</span>Mb</strong></p>
+					<div class="form-group">
+						<label for="title" class="col-md-3 control-label"><strong><?php echo $lang_media['Filesize']?></strong></label>
+						<div class="col-md-9">
+							<div id="filesize"></div>
+						</div>			
+					</div>
+
+					<div class="form-group">
+						<label for="title" class="col-md-3 control-label"><strong><?php echo $lang_media['Uploaded']?></strong></label>
+						<div class="col-md-9">
+							<div id="posted"></div>
+						</div>			
+					</div>
+
+					<?php echo active_field(array('name' => 'basename', 'attributes'=>$Module->attributes['basename'], 'desc' => $lang_media['Filename']))?>
+					<?php echo active_field(array('name' => 'comment', 'attributes'=>$Module->attributes['comment'], 'desc' => $lang_media['Comment']))?>
+				</form>
+			</div>
+			
+			<div class="modal-footer">
+				<div class="pull-left">
+					<a role="delete" href="#" class="text-danger"><span class="fa fa-times"></span> <?php echo $lang_media['Remove']?></a>
+				</div>
+				<button role="save" type="button" class="btn btn-primary"><span class="fa fa-floppy-o"></span> <?php echo NFW::i()->lang['Save changes']?></button>
+				<button type="button" class="btn btn-default" data-dismiss="modal"><?php echo NFW::i()->lang['Close']?></button>
 			</div>
 		</div>
 	</div>
+</div>
 	
-	<div class="form-group"><div class="col-md-offset-3 col-md-9">
-		<table id="media-list" class="table table-striped table-condensed table-hover" style="display: none;">
-			<thead>
-				<tr>
-					<th></th>
-					<th><?php echo $lang_media['Comment']?></th>
-					<th></th>
-				</tr>
-			</thead>
-			<tbody id="media-list-rows"></tbody>
-		</table>
-	</div></div>
-</fieldset></form>	
-<?php endif; ?>	
+<form id="<?php echo $session_id?>" action="<?php echo NFW::i()->base_path.'media.php?action=upload&session_id='.$session_id?>" method="POST" enctype="multipart/form-data">
+	<input type="hidden" name="owner_id" value="<?php echo $owner_id?>" />
+	<input type="hidden" name="owner_class" value="<?php echo $owner_class?>" />
+	<input type="hidden" name="MAX_FILE_SIZE" value="<?php echo $MAX_FILE_SIZE?>" />
+
+	<div id="record-image-template" style="display: none;">
+		<div id="%id%" role="record" class="col-xs-6 col-sm-4 col-md-3 col-lg-3">
+			<div class="thumbnail">
+				<a role="<?php echo $session_id?>-file-properties" href="%url%" data-type="%type%" data-basename="%basename%" data-posted="%posted%" data-filesize="%filesize%">
+					<img <?php echo '%tmbsrc%'?> alt="" />
+					<span id="comment" style="display: none;">%comment%</span>
+				</a>
+			</div>
+		</div>	
+	</div>
+
+	<div id="record-file-template" style="display: none;">
+		<div id="%id%" role="record" class="col-xs-6 col-sm-4 col-md-3 col-lg-3">
+			<div class="thumbnail">
+				<a role="<?php echo $session_id?>-file-properties" href="%url%" data-type="%type%" data-basename="%basename%" data-posted="%posted%" data-filesize="%filesize%">
+					<span class="overlay">				
+						<img  class="icon" <?php echo '%iconsrc%'?> alt="" />
+						<span id="basename" class="basename">%basename%</span>
+					</span>
+					<img src="<?php echo $icon_container_img?>" alt="" />
+					<span id="comment" style="display: none;">%comment%</span>
+				</a>
+			</div>
+		</div>	
+	</div>
+
+	<div class="row">
+		<div class="col-md-8">
+			<div id="dropzone" class="fade well dropzone"><?php echo $lang_media['Messages']['Dropzone']?></div>
+			
+			<div class="row" id="media-list">
+			<?php foreach ($records as $record) { ?>
+				<div id="<?php echo $record['id']?>" role="record" class="col-xs-6 col-sm-4 col-md-3 col-lg-3">
+					<div class="thumbnail">
+						<a role="<?php echo $session_id?>-file-properties" href="<?php echo $record['url']?>" data-type="<?php echo $record['type']?>" data-basename="<?php echo $record['basename']?>" data-posted="<?php echo $record['posted']?>" data-filesize="<?php echo $record['filesize_str']?>">
+							<?php if ($record['type'] == 'image'):?>
+							<img src="<?php echo tmb($record, $tmb_width, $tmb_height, array('complementary' => true))?>" alt="" />
+							<?php else: ?>
+							<span class="overlay">				
+								<img  class="icon" src="<?php echo $record['icons']['64x64']?>"alt="" />
+								<span id="basename" class="basename" title="<?php echo htmlspecialchars($record['basename'])?>"><?php echo htmlspecialchars($record['basename'])?></span>
+							</span>
+							<img src="<?php echo $icon_container_img?>" alt="" />
+							<?php endif;?>
+							<span id="comment" style="display: none;"><?php echo htmlspecialchars($record['comment'])?></span>
+						</a>
+					</div>
+				</div>
+			<?php } ?>  
+			</div>
+		</div>
+		<div class="col-md-4">
+			<div class="alert alert-warning alert-cond alert-dismisable" role="alert">
+				<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				<p><?php echo $lang_media['MaxFileSize']?>: <strong><?php echo number_format($MAX_FILE_SIZE/1048576, 2, '.', ' ').$lang_media['mb']?></strong></p>
+				<p><?php echo $lang_media['MaxSessionSize']?>: <strong><?php echo number_format($MAX_SESSION_SIZE/1048576, 2, '.', ' ').$lang_media['mb']?></strong></p>
+				<p><?php echo $lang_media['CurrentSessionSize']?>: <strong><span id="session-size"><?php echo number_format($session_size/1048576, 2, '.', ' ')?></span><?php echo $lang_media['mb']?></strong></p>
+				<?php if ($image_max_x && $image_max_y):?>
+				<p><?php echo $lang_media['MaxImageSize']?>: <strong><?php echo $image_max_x.'x'.$image_max_y?>px</strong></p>
+				<?php endif; ?>
+			</div>
+			
+			<div class="alert alert-info alert-cond alert-dismisable" role="alert">
+				<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				<small><?php echo $lang_media['Messages']['Sorting']?></small>
+			</div>
+
+			<label for="<?php echo $session_id?>-upload-button">
+      			<span class="btn btn-success btn-lg"><span class="fa fa-folder-open" aria-hidden="true"></span> <?php echo $lang_media['Choose files']?></span>
+				<input type="file" name="local_file" id="<?php echo $session_id?>-upload-button" style="display:none" multiple />
+			</label>
+			<div id="uploading-status" class="uploading-status" style="display: none;"></div>
+		</div>
+	</div>
+</form>

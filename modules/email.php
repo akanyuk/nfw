@@ -1,15 +1,16 @@
 <?php
 /***********************************************************************
-  Copyright (C) 2007-2009 Andrew nyuk Marinov (aka.nyuk@gmail.com)
+  Copyright (C) 2007-2015 Andrew nyuk Marinov (aka.nyuk@gmail.com)
   $Id$
   
  ************************************************************************/
 
 class email extends base_module {
+	const LOGS_EMAIL_FAILED_SEND = 30;
+	
 	// Default language
 	private $email_lang = 'en';
 	// Default charset
-	//var $charset = 'windows-1251';
 	private $charset = 'utf-8';
 	// Default mailer
 	private $from = '';
@@ -22,38 +23,38 @@ class email extends base_module {
 		$this->attachments[] = array($path, $name, $encoding, $type);
 	}
 	
-    private function send($recipients, $subject, $message) {
-        // Load the phpmailer class
-        require_once NFW_ROOT.'helpers/phpmailer/class.phpmailer.php';
-        $mail = new PHPMailer();
-        $mail->SetLanguage($this->email_lang, NFW_ROOT.'helpers/phpmailer/language/');
-        $mail->From     = $this->from;
-        $mail->FromName = $this->from_name;
-//        $mail->Host     = "smtp.retropc.ru";
-//        $mail->Mailer   = "smtp";
-
-        $mail->CharSet = $this->charset;
-        $mail->Subject = $subject;
-
-        if (isset(NFW::i()->cfg['PHPMailer']['Mailer'])) {
-        	$mail->Mailer = NFW::i()->cfg['PHPMailer']['Mailer'];
-        }
-        
-        if (substr($message, 0, 6) == '<html>') {
-        	// This is HTML message
-        	$mail->AltBody = strip_tags($message);
+	private function send($recipients, $subject, $message) {
+		// Load the phpmailer class
+		require_once NFW_ROOT.'helpers/phpmailer/PHPMailerAutoload.php';
+		$mail = new PHPMailer();
+		$mail->From     = $this->from;
+		$mail->FromName = $this->from_name;
+		
+		$mail->CharSet = $this->charset;
+		$mail->Subject = $subject;
+		
+		// Load/override custom config
+		if (isset(NFW::i()->cfg['PHPMailer']) && !empty(NFW::i()->cfg['PHPMailer'])) {
+			foreach (NFW::i()->cfg['PHPMailer'] as $varname=>$value) {
+				$mail->$varname = $value;
+			}
+		}
+		
+		if (substr($message, 0, 6) == '<html>') {
+			// This is HTML message
+			$mail->AltBody = strip_tags($message);
 			$mail->MsgHTML($message);
-        }
-        else {
-        	// This is plain text message
-        	$mail->Body = $message;
-        }
-					
+		}
+		else {
+			// This is plain text message
+			$mail->Body = $message;
+		}
+		
 		if (!empty($this->attachments)) {
 			foreach ($this->attachments as $a) {
 				if (!$mail->AddAttachment($a[0],$a[1],$a[2],$a[3])) {
 					email::error('Unable to add attachment');
-        			return false;
+					return false;
 				}
 			}
 			$this->attachments = array();
@@ -62,36 +63,36 @@ class email extends base_module {
 		if (is_string($recipients)) {
 			$to = array($recipients);
 		}
-		else 
+		else
 			$to = $recipients;
 			
-        foreach($to as $r) {
-        	if (is_string($r)) { 
-        		$mail->AddAddress($r);
-        	}
-        	else if (is_array($r)) {
-            	$mail->AddAddress($r["email"], '"'.$r["fullname"].'"');
-        	}
-        	else { 
-        		email::error('Incorrect recipient address');
-        		return false;
-        	}
-
-            if (!$mail->Send()) { 
-                self::error($mail->ErrorInfo, __FILE__, __LINE__);
-                return false;
-            }
-            
+		foreach($to as $r) {
+			if (is_string($r)) {
+				$mail->AddAddress($r);
+			}
+			else if (is_array($r)) {
+				$mail->AddAddress($r["email"], '"'.$r["fullname"].'"');
+			}
+			else {
+				email::error('Incorrect recipient address');
+				return false;
+			}
+			
+			if (!$mail->Send()) {
+				self::error($mail->ErrorInfo, __FILE__, __LINE__);
+				return false;
+			}
+			
 			// Clear all addresses and attachments for next loop
-            $mail->ClearAddresses();
-            $mail->ClearAttachments();
-        }
-        
-        return true;
-    }
+			$mail->ClearAddresses();
+			$mail->ClearAttachments();
+		}
+		
+		return true;
+	}
     
     /**
-     * Create email from Smarty-template and send to recipient.
+     * Create email from template and send to recipient.
      * If message start from <html>, automaticaly created HTML-email
      *  
      * @param $address			string	Recipient email address.
@@ -99,7 +100,7 @@ class email extends base_module {
      * @param $tpl_params		array	Variables to render in template.
      * @param $attachments		array 	Attachments filenames array.
      * 
-     * @return unknown_type		boolean	result.
+     * @return boolean			Execution result.
      */
 	public static function sendFromTemplate ($address, $tpl_filename, $tpl_params = array(), $attachments = array()) {
 	    $email = new email();
@@ -134,7 +135,7 @@ class email extends base_module {
 		}
 		
 	    if (!$email->send($address, $subject, $message)) {
-	    	logs::write('Не удалось отправить e-mail сообщение на адрес '.$address); 
+	    	logs::write($address, email::LOGS_EMAIL_FAILED_SEND); 
 	    	return false;
 	    }
 	    else
@@ -143,7 +144,7 @@ class email extends base_module {
 	}   
 
 	/**
-	 * Create email from Smarty-template and send to recipient.
+	 * Create email from string and send to recipient.
 	 * If message start from <html>, automaticaly created HTML-email
 	 *
 	 * @param $address			string	Recipient email address.
@@ -154,7 +155,7 @@ class email extends base_module {
 	 * 									'from_name' from name
 	 * @param $attachments		array 	Attachments filenames array.
 	 *
-	 * @return unknown_type		boolean	result.
+	 * @return boolean			Execution result.
 	 */
 	public static function sendFromString ($address, $subject, $message, $params = array(), $attachments = array()) {
 		if (!$subject || !$message) return false;
@@ -181,7 +182,7 @@ class email extends base_module {
 		}
 		
 		if (!$email->send($address, $subject, $message)) {
-			logs::write('Не удалось отправить e-mail сообщение на адрес '.$address);
+			logs::write($address, email::LOGS_EMAIL_FAILED_SEND);
 			return false;
 		}
 		else

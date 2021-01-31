@@ -1,6 +1,6 @@
 <?php
 /***********************************************************************
-  Copyright (C) 2009-2013 Andrew nyuk Marinov (aka.nyuk@gmail.com)
+  Copyright (C) 2009-2015 Andrew nyuk Marinov (aka.nyuk@gmail.com)
   $Id$  
 
 	Редактируемые из админки настройки
@@ -9,13 +9,8 @@
 
 class settings extends active_record {
 	static $action_aliases = array(
-		'read' => array(
-			array('module' => 'settings', 'action' => 'admin'),
-			array('module' => 'settings', 'action' => 'media_get'),
-		),
 		'update' => array(
-			array('module' => 'settings', 'action' => 'media_upload'),
-			array('module' => 'settings', 'action' => 'media_modify'),
+			array('module' => 'settings', 'action' => 'admin'),
 		)
 	);
 		
@@ -23,6 +18,13 @@ class settings extends active_record {
 		'name' => array('desc'=>'Наименование', 'type'=>'str', 'required'=>true, 'unique'=>true, 'minlength'=>4, 'maxlength'=>255),
 		'values' => array('desc'=>'Параметры', 'type'=>'custom'),
 	);
+	
+	function __construct($record_id = false) {
+		$this->lang = NFW::i()->getLang('settings');
+	
+		return parent::__construct($record_id);
+	}
+	
 	
 	private function parseConfig($msg) {
 		 
@@ -112,7 +114,7 @@ class settings extends active_record {
 		return $this->record;
 	}
 		
-	public function reload($varname = false) {
+	public function reload($varname = false, $foo = null) {
 		return $this->load($varname ? $varname : $this->record['varname']);
 	}
 	
@@ -156,8 +158,8 @@ class settings extends active_record {
 		return NFW::i()->unserializeArray($value);
 	}
 		
-	function validate() {
-		$errors = parent::validate();
+	function validate($record = false, $attributes = false) {
+		$errors = parent::validate($record, $attributes);
 		
 		if (!isset($errors['name'])) {
 			// Check `desc` unique
@@ -179,8 +181,14 @@ class settings extends active_record {
 		return $errors;
 	}
 	
-	function actionAdmin() {
-		if (!$result = NFW::i()->db->query_build(array('SELECT'	=> 'id, name, varname', 'FROM' => $this->db_table, 'ORDER BY' => 'id'))) {
+	function actionAdminAdmin() {
+		$query = array(
+			'SELECT' => 'id, name, varname', 
+			'FROM' => $this->db_table,
+			'WHERE' => 'is_admin=1',
+			'ORDER BY' => 'id'
+		);
+		if (!$result = NFW::i()->db->query_build($query)) {
 			$this->error('Unable to fetch records', __FILE__, __LINE__, NFW::i()->db->error());
 			return false;
 		}
@@ -194,13 +202,21 @@ class settings extends active_record {
         ));        
 	}
 
-	function actionUpdate() {
+	function actionAdminUpdate() {
 		$this->error_report_type = (empty($_POST)) ? 'default' : 'active_form';
 		
     	if (!$this->load($_GET['varname'])) return false;
 		
+    	foreach ($this->record['attributes'] as $key=>$values) {
+    		if (!isset($values['type'])) {
+    			$values['type'] = 'str';
+    		}
+    		
+    		$this->record['attributes'][$key] = $values;
+    	}
+    	 
 	    if (empty($_POST)) {
-	    	if (NFW::i()->findTemplatePath('update_'.$this->record['varname'].'.tpl', get_class($this), $this->path_prefix)) {
+	    	if (NFW::i()->findTemplatePath('update_'.$this->record['varname'].'.tpl', get_class($this))) {
 	    		$result = $this->renderAction(array(), 'update_'.$this->record['varname']);
 	    	}
 	    	else {
@@ -232,19 +248,6 @@ class settings extends active_record {
 			NFW::i()->renderJSON(array('result' => 'error', 'errors' => array('general' => $this->last_msg)));
 		}
 		
-		// Add service information
-		if ($is_updated) {
-			$query = array(
-				'UPDATE'	=> $this->db_table,
-				'SET'		=> '`posted_by`='.NFW::i()->user['id'].', `posted_username`=\''.NFW::i()->db->escape(NFW::i()->user['username']).'\', `poster_ip`=\''.logs::get_remote_address().'\', `posted`='.time(),
-				'WHERE'		=> '`id`='.$this->record['id']
-			);
-			if (!NFW::i()->db->query_build($query)) {
-				$this->error('Unable to update record', __FILE__, __LINE__, NFW::i()->db->error());
-				return false;
-			}
-		}
-				
 		NFW::i()->renderJSON(array('result' => 'success', 'is_updated' => $is_updated));
 	}
 }

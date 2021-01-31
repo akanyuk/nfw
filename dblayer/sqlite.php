@@ -33,7 +33,7 @@ class DBLayer
 	);
 
 
-	function DBLayer($db_host, $db_username, $db_password, $db_name, $db_prefix, $p_connect)
+	function __construct($db_host, $db_username, $db_password, $db_name, $db_prefix, $p_connect)
 	{
 		// Prepend $db_name with the path to the project root directory
 		$db_name = PROJECT_ROOT.$db_name;
@@ -54,6 +54,8 @@ class DBLayer
 		if (!is_writable($db_name))
 			error('Unable to open database \''.$db_name.'\' for writing. Permission denied.', __FILE__, __LINE__);
 
+		$sqlite_error = '';
+		
 		if ($p_connect)
 			$this->link_id = @sqlite_popen($db_name, 0666, $sqlite_error);
 		else
@@ -309,13 +311,12 @@ class DBLayer
 	}
 
 
-	function error()
-	{
-		$result['error_sql'] = @current(@end($this->saved_queries));
-		$result['error_no'] = $this->error_no;
-		$result['error_msg'] = $this->error_msg;
-
-		return $result;
+	function error() {
+		return array(
+            'error_sql' => @current(@end($this->saved_queries)),
+            'error_no' => $this->error_no,
+            'error_msg' => $this->error_msg,
+		);
 	}
 
 
@@ -405,9 +406,8 @@ class DBLayer
 			$query .= 'PRIMARY KEY ('.implode(',', $schema['PRIMARY KEY']).'),'."\n";
 
 		// Add unique keys
-		if (isset($schema['UNIQUE KEYS']))
-		{
-			foreach ($schema['UNIQUE KEYS'] as $key_name => $key_fields)
+		if (isset($schema['UNIQUE KEYS'])) {
+			foreach ($schema['UNIQUE KEYS'] as $key_fields)
 				$query .= 'UNIQUE ('.implode(',', $key_fields).'),'."\n";
 		}
 

@@ -28,7 +28,7 @@ class DBLayer
 	);
 
 
-	function DBLayer($db_host, $db_username, $db_password, $db_name, $db_prefix, $foo)
+	function __construct($db_host, $db_username, $db_password, $db_name, $db_prefix, $foo)
 	{
 		$this->prefix = $db_prefix;
 
@@ -244,13 +244,12 @@ class DBLayer
 	}
 
 
-	function error()
-	{
-		$result['error_sql'] = @current(@end($this->saved_queries));
-		$result['error_no'] = @mysqli_errno($this->link_id);
-		$result['error_msg'] = @mysqli_error($this->link_id);
-
-		return $result;
+	function error() {
+	    return array(
+		  'error_sql' => @current(@end($this->saved_queries)),
+		  'error_no' => @mysqli_errno($this->link_id),
+		  'error_msg' => @mysqli_error($this->link_id),
+	    );
 	}
 
 

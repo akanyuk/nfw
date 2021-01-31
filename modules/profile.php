@@ -1,6 +1,6 @@
 <?php
 /***********************************************************************
-  Copyright (C) 2011-2012 Andrew nyuk Marinov (aka.nyuk@gmail.com)
+  Copyright (C) 2011-2015 Andrew nyuk Marinov (aka.nyuk@gmail.com)
   $Id$  
 
   Админский скрипт для управления своим профилем.
@@ -15,7 +15,7 @@ class profile extends users {
 		return parent::__construct($record_id);
 	}
 	
-	function actionAdmin() {
+	function actionAdminAdmin() {
 		if (empty($_POST)) return $this->renderAction();
 		
 		// Start updating
@@ -24,7 +24,7 @@ class profile extends users {
 		if (!$this->load(NFW::i()->user['id'])) return false;
 
 		// Modify allowed fields
-		$this->record['language'] = $_POST['language'];
+		$this->record['language'] = isset($_POST['language']) ? $_POST['language'] : $this->record['language'];
 		$this->record['country'] = $_POST['country'];
 		$this->record['city'] = $_POST['city'];
 		$this->record['realname'] = $_POST['realname'];

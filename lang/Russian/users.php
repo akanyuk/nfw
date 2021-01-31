@@ -1,26 +1,54 @@
 <?php
-// Russian language
+/**
+ * Russian language
+ *
+ * @var array $lang_users
+ **/
 
 $lang_users = array(
+	// Attributes descriptions
+	'Attributes' => array(
+		'email' 	=> 'E-mail',
+		'realname' 	=> 'Полное имя',
+		'language'	=> 'Язык',
+		'city' 		=> 'Город',
+		'country'	=> 'Страна',
+		'username' 	=> 'Логин',
+		'is_blocked'=> 'Пользователь заблокирован',
+		'group_id' 	=> 'Группа',
+	),
+	
+	// Titles
+	'Title_Users'		=> 'Пользователи',
+	'Title_List'		=> 'Список',
+	'Title_Edit'		=> 'Редактирование',
+		
 	// 'admin.tpl' related
 	'New'				=> 'Новый пользователь',
-	
+	'All'				=> 'Все',
+	'No group'			=> 'Без группы',
+	'Username'			=> 'Логин',
+	'Realname'			=> 'Имя',
+		
+	'Status' => array(
+		'Active' => 'Активен',
+		'Blocked' => 'Заблокирован',
+	),
+		
 	// 'update.tpl' related
 	'Registered'		=> 'Зарегистрирован',
 	'New_password'		=> 'Новый пароль',
+	'Retype_password'	=> 'Повторите ввод',
 	'Profile'			=> 'Профиль',
 	'Permissions'		=> 'Права пользователя',
-	'Save'				=> 'Сохранить изменения',
-	'Delete'			=> 'Удалить профиль пользователя',
-	'Update_password'	=> 'Сменить пароль пользователя',
+	'Delete'			=> 'Удалить профиль',
+	'Update_password'	=> 'Сменить пароль',
 	'Back_to_list' 		=> 'К списку пользователей',
 
 	'Msg_Saved'			=> 'Профиль пользователя сохранен',
 	'Msg_Pass_updated'	=> 'Пароль пользователя изменен',
 	'Msg_Confirm_delete'=> 'Удалить профиль пользователя?',
 	
-	'Error_dupe1'	=> 'Пользователь с таким же значением «',
-	'Error_dupe2'	=> '» уже зарегистрирован.',
 	'Error_passwords_missmatch'	=> 'Пароли не совпадают.',
 	'Errors_password_too_short' => 'Пароль не может быть менее 4-х символов.',
 

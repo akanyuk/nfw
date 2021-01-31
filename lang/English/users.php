@@ -1,16 +1,46 @@
-<?php
-// English language
+<?php 
+/**
+ * English language
+ * 
+ * @var array $lang_users
+ **/
 
 $lang_users = array(
+	// Attributes descriptions
+	'Attributes' => array(
+		'email' 	=> 'E-mail',
+		'realname' 	=> 'Full name',
+		'language'	=> 'Language',
+		'city' 		=> 'City',
+		'country'	=> 'Country',
+		'username' 	=> 'Username',
+		'is_blocked'=> 'User is blocked',
+		'group_id' 	=> 'Group',
+	),
+
+	// Titles
+	'Title_Users'		=> 'Users',
+	'Title_List'		=> 'List',
+	'Title_Edit'		=> 'Edit',
+		
 	// 'admin.tpl' related
 	'New'				=> 'New user',
+	'All'				=> 'All',
+	'No group'			=> 'No group',
+	'Username'			=> 'Username',
+	'Realname'			=> 'Realname',
 
+	'Status' => array(
+		'Active' => 'Active',
+		'Blocked' => 'Blocked',
+	),
+		
 	// 'update.tpl' related
 	'Registered'		=> 'Registered',
 	'New_password'		=> 'New password',
+	'Retype_password'	=> 'Retype password',
 	'Profile'			=> 'Profile',
 	'Permissions'		=> 'User rights',
-	'Save'				=> 'Save changes',
 	'Delete'			=> 'Delete user profile',
 	'Update_password'	=> 'Update user password',
 	'Back_to_list' 		=> 'Back to users list',
@@ -19,8 +49,6 @@ $lang_users = array(
 	'Msg_Pass_updated'	=> 'User password updated.',
 	'Msg_Confirm_delete'=> 'Delete user profile permanently?',
 
-	'Error_dupe1'	=> 'User with same «',
-	'Error_dupe2'	=> '» already exists.',
 	'Error_passwords_missmatch'	=> 'Passwords missmatch.',
 	'Errors_password_too_short' => 'Password too short.',
 

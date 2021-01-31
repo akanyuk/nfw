@@ -1,30 +1,9 @@
 <?php
-/***********************************************************************
-  Copyright (C) 2009-2011 Andrew nyuk Marinov (aka.nyuk@gmail.com)
-  $Id$
-  
-  Админский скрипт для управления правами пользователей.
-  
-		 	  
- ************************************************************************/
-
+/**
+ * @desc Управление правами пользователей.
+ */
 class permissions extends base_module {
-	private $roles = array();		// Полный список существующих ролей
-	
-	public static function expandPermissionsByAliases($permissions) {
-		$expanded = array();
-		foreach ($permissions as $p) {
-			$expanded[] = $p;
-			
-			if (!class_exists($p['module']) || !isset($p['module']::$action_aliases[$p['action']])) continue;
-			
-			foreach ($p['module']::$action_aliases[$p['action']] as $alias) {
-				$expanded[] = $alias;
-			}
-		}
-		 
-		return $expanded;
-	}
+	public $roles = array();		// Полный список существующих ролей
 	
 	function __construct() {
 		// Load all available roles
@@ -44,13 +23,26 @@ class permissions extends base_module {
     	return true;
     }
     
-    public function getPermissions($user_id) {
+    private function getRoles($user_id) {
+    	if (!$result = NFW::i()->db->query_build(array('SELECT'	=> 'role', 'FROM' => 'users_role', 'WHERE' => 'user_id='.intval($user_id), 'ORDER BY' => 'role'))) {
+    		$this->error('Unable to fetch user roles', __FILE__, __LINE__, NFW::i()->db->error());
+    		return false;
+    	}
+    	$roles = array();
+    	while($record = NFW::i()->db->fetch_assoc($result)) {
+    		$roles[] = $record['role'];
+    	}
+    	
+    	return $roles;
+    }
+    
+    public function getPermissions($user) {
     	$permissions = array();
     	
     	$query = array(
-    		'SELECT'	=> 'role',
+    		'SELECT'	=> 'DISTINCT role',
     		'FROM'		=> 'users_role',
-    		'WHERE'		=> 'user_id='.intval($user_id)
+    		'WHERE'		=> 'user_id IN ('.$user['id'].','.$user['group_id'].')'
     	);
     	if (!$result = NFW::i()->db->query_build($query)) {
     		$this->error('Unable to fetch users roles', __FILE__, __LINE__, NFW::i()->db->error());
@@ -62,7 +54,23 @@ class permissions extends base_module {
     		}
     	}
     	
-    	return self::expandPermissionsByAliases($permissions);
+    	// Expand permissions by aliases
+    	foreach ($permissions as $p) {
+    		if (class_exists($p['module']) && isset($p['module']::$action_aliases[$p['action']])) {
+	    		foreach ($p['module']::$action_aliases[$p['action']] as $alias) {
+	    			$permissions[] = $alias;
+	    		}
+    		}
+    		
+    		$mapped_module = NFW::i()->getClass($p['module'], true);
+    		if ($mapped_module != $p['module'] && class_exists($mapped_module) && isset($mapped_module::$action_aliases[$p['action']])) {
+    			foreach ($mapped_module::$action_aliases[$p['action']] as $alias) {
+    				$permissions[] = $alias;
+    			}
+    		}
+    	}
+    		
+    	return $permissions;
     }
     
     public function emptyUserRoles($user_id) {
@@ -70,7 +78,7 @@ class permissions extends base_module {
 			'DELETE'	=> 'users_role',
     		'WHERE'		=> 'user_id='.intval($user_id)
 		);
-    	if (!$result = NFW::i()->db->query_build($query)) {
+    	if (!NFW::i()->db->query_build($query)) {
     		$this->error('Unable to delete user roles', __FILE__, __LINE__, NFW::i()->db->error());
     		return false;
     	}
@@ -78,44 +86,29 @@ class permissions extends base_module {
     	return true;
     }
 
-    function actionUpdate() {
+    function actionAdminUpdate() {
     	if (!$CUsers = new users($_GET['user_id'])) return false;
     	 
-    	$query = array(
-    		'SELECT'	=> 'role',
-    		'FROM'		=> 'users_role',
-    		'WHERE'		=> 'user_id='.intval($_GET['user_id']),
-    		'ORDER BY'	=> 'role'
-    	);
-    	if (!$result = NFW::i()->db->query_build($query)) {
-    		$this->error('Unable to fetch user roles', __FILE__, __LINE__, NFW::i()->db->error());
-    		return false;
-    	}
-    	$user_roles = array();
-    	while($record = NFW::i()->db->fetch_assoc($result)) {
-    		$user_roles[] = $record['role'];
-    	}
-    	
     	if (empty($_POST)) {
     		NFW::i()->stop($this->renderAction(array(
-    			'all_roles' => $this->roles,
-    			'user_roles' => $user_roles,
+    			'user_roles' => $this->getRoles($CUsers->record['id']),
+    			'group_roles' => $this->getRoles($CUsers->record['group_id']),
     			'user' => $CUsers->record    		
     		)));
     	}
 
     	// Empty user's roles
     	$sql = 'DELETE FROM '.NFW::i()->db->prefix.'users_role WHERE user_id='.$CUsers->record['id'];
-    	if (!$result = NFW::i()->db->query($sql)) {
+    	if (!NFW::i()->db->query($sql)) {
     		$this->error('Unable to empty user roles', __FILE__, __LINE__, NFW::i()->db->error());
     		return false;
     	}
 
-    	if (!empty($_POST['roles'])) foreach ($_POST['roles'] as $rolename=>$foo) {
+    	if (!empty($_POST['roles'])) foreach (array_keys($_POST['roles']) as $rolename) {
     		if (!isset($this->roles[$rolename])) continue;
     		    		
     		$sql = 'INSERT INTO '.NFW::i()->db->prefix.'users_role (user_id, role) VALUES ('.$CUsers->record['id'].', \''.NFW::i()->db->escape($rolename).'\')';
-    		if (!$result = NFW::i()->db->query($sql)) {
+    		if (!NFW::i()->db->query($sql)) {
     			$this->error('Unable to insert user role', __FILE__, __LINE__, NFW::i()->db->error());
     			return false;
     		}

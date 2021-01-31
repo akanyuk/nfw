@@ -1,9 +1,9 @@
-<?
+<?php
 $captcha_params = array(
 	'length' => 6,
 	'size' => 15,
-	'width' => 90,
-	'font' => '1.ttf',
+	'width' => 100,
+	'font' => '3.ttf',
 );
 require(NFW_ROOT.'helpers/captcha/Captcha.php');
 $CCaptcha = new CaptchaNumbers($captcha_params);

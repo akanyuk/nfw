@@ -1,3 +1,3 @@
 <?php
-NFW::i()->stop('NFW '.NFW_VERSION);
+NFW::i()->stop('NFW');
 

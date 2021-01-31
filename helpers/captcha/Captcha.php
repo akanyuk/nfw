@@ -1,4 +1,4 @@
-<?
+<?php
 /**
 * Captcha File
 * Generates CAPRCHA Numbers Image
@@ -94,7 +94,7 @@ class CaptchaNumbers {
     }
 
     /**
-    * @return Image
+    * @return Object
     * @desc generate the image
     */      
     function generate() {
@@ -120,7 +120,6 @@ class CaptchaNumbers {
 	        $image = ImageCreate($this->width, $this->height) or die("Cannot Initialize new GD image stream");
 	        
 	        // colors
-	        $background_color = ImageColorAllocate($image, 240, 240, 240);
 	        $net_color = ImageColorAllocate($image, 200, 200, 200);
 				
 	        // grid

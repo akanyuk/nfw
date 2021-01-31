@@ -1,51 +1,56 @@
 <?php
-/***********************************************************************
-  Copyright (C) 2009-2012 Andrew nyuk Marinov (aka.nyuk@gmail.com)
-  $Id$
-
-  Админский скрипт для управления пользователями.
-
- ************************************************************************/
-
+/**
+ * @desc Управление пользователями.
+ */
 class users extends active_record {
 	static $action_aliases = array(
 		'read' => array(
 			array('module' => 'users', 'action' => 'admin'),
+			array('module' => 'users', 'action' => 'ip2geo'),
 		),
 		'update' => array(
+			array('module' => 'users', 'action' => 'admin'),
+			array('module' => 'users', 'action' => 'insert'),
 			array('module' => 'users', 'action' => 'update_password'),
+			array('module' => 'users', 'action' => 'delete'),
 		)
 	);
 
 	var $attributes = array(
-		'username' => array('desc' => 'Имя', 'type' => 'str', 'required' => true, 'unique' => true, 'minlength' => 2, 'maxlength' => 32),
-		'email' => array('desc' => 'E-mail', 'type' => 'email', 'required' => true, 'unique' => true),
-		'realname' => array('desc' => 'Полное имя', 'type' => 'str', 'minlength' => 2, 'maxlength' => 200),
-		'language'	=> array('desc' => 'Язык', 'type' => 'select', 'options' => array(
-			'Russian', 'English'
-		)),
-		'city' => array('desc' => 'Город', 'type' => 'str', 'minlength' => 2, 'maxlength' => 85),
-		'is_blocked' => array('desc' => 'Пользователь заблокирован', 'type' => 'bool'),
-		'group_id' => array('desc' => 'Группа', 'type' => 'select', 'options' => array(
-			0 => array('id' => 0, 'desc' => 'Без группы')
-		)),
+		'realname' => array('type' => 'str', 'minlength' => 2, 'maxlength' => 255, 'required' => true),
+		'language'	=> array('type' => 'select', 'options' => array()),
+		'city' => array('type' => 'str', 'minlength' => 2, 'maxlength' => 100),
+		'country' => array('type' => 'select', 'options' => array()),
+	);
+	
+	protected $service_attributes = array(
+		'username' => array('type' => 'str', 'required' => true, 'unique' => true, 'minlength' => 2, 'maxlength' => 32),
+		'email' => array('type' => 'email', 'required' => true, 'unique' => true),
+		'is_blocked' => array('type' => 'bool'),
+		'group_id' => array('type' => 'select'),
 	);
 
 	function __construct($record_id = false) {
     	$result = parent::__construct($record_id);
 
-    	// Restore 'module_map' changes
-    	if ($this->db_table != 'users' && isset(NFW::i()->cfg['module_map']['users']) && NFW::i()->cfg['module_map']['users'] == $this->db_table) {
-    		$this->db_table = 'users';
+    	$this->lang = NFW::i()->getLang('users');
+    	
+    	if (isset(NFW::i()->cfg['available_languages']) && !empty(NFW::i()->cfg['available_languages'])) {
+    		$this->attributes['language']['options'] = NFW::i()->cfg['available_languages'];
+    	}
+    	 
+    	foreach ($this->lang['Attributes'] as $varname => $desc) {
+    		if (isset($this->attributes[$varname])) {
+    			$this->attributes[$varname]['desc'] = $desc;
+    		}
+    		
+    		if (isset($this->service_attributes[$varname])) {
+    			$this->service_attributes[$varname]['desc'] = $desc;
+    		}
     	}
 
-    	$this->lang = NFW::i()->getLang('users',1);
-
-    	$this->attributes["country"] = array('desc' => 'Страна', 'type' => 'select', 'options' =>
-			$this->lang["CountryList"]
-		);
-
-
+    	$this->attributes['country']['options'] = $this->lang['CountryList'];
+    	
     	return $result;
     }
 
@@ -92,7 +97,7 @@ class users extends active_record {
     	}
 
     	// If this a cookie for a logged in user and it shouldn't have already expired
-    	if (intval($cookie['user_id']) <= 1 || intval($cookie['expiration_time']) <= time()) return false;
+    	if (intval($cookie['user_id']) <= 1 || ($cookie['expiration_time'] && intval($cookie['expiration_time']) <= time())) return false;
 
    		if (!$user = $this->authentificate(intval($cookie['user_id']), $cookie['password_hash'], true)) return false;
 
@@ -110,7 +115,7 @@ class users extends active_record {
     	if (!isset(NFW::i()->cfg['cookie'])) return false;
 
     	// Send a new, updated cookie with a new expiration timestamp
-    	$expire = time() + NFW::i()->cfg['cookie']['expire'];
+    	$expire = NFW::i()->cfg['cookie']['expire'] ? time() + NFW::i()->cfg['cookie']['expire'] : 0;
 
     	// Enable sending of a P3P header
     	header('P3P: CP="CUR ADM"');
@@ -131,80 +136,57 @@ class users extends active_record {
 
     /**
      * Check if given username and password is correct
-     * @param $username
-     * @param $password
-     * @return unknown_type
+     * @param int or string	User's ID or username
+     * @param string		User's password
+     * @param boolean		Is password hash or readable
+     * @return Array 		Users's profile
      */
     public function authentificate($user, $password, $password_is_hash = false) {
 		// Get user info matching login attempt
-		$query = array(
-			'SELECT'	=> '*',
-			'FROM'		=> 'users',
-			'WHERE' 	=> 'is_group=0 AND username=\''.NFW::i()->db->escape($user).'\''
-		);
-		$query['WHERE'] = is_int($user) ? 'id='.intval($user) : 'username=\''.NFW::i()->db->escape($user).'\'';
-		if (!$result = NFW::i()->db->query_build($query)) {
+		$where = array('`is_group`=0');
+		$where[] = is_int($user) ? 'id='.intval($user) : 'username=\''.NFW::i()->db->escape($user).'\'';
+		if (!$result = NFW::i()->db->query_build(array('SELECT'	=> '*', 'FROM' => 'users', 'WHERE' => implode(' AND ', $where)))) {
 			$this->error('Search user error', __FILE__, __LINE__, NFW::i()->db->error());
 			return false;
 		}
+		if (!NFW::i()->db->num_rows($result)) return false;
+		
 		$db_user = NFW::i()->db->fetch_assoc($result);
 
-		if (!$db_user['id'] || ($password_is_hash && $password != $db_user['password']) || (!$password_is_hash && self::hash($password, $db_user['salt']) != $db_user['password'])) return false;
+		if (($password_is_hash && $password != $db_user['password']) || (!$password_is_hash && self::hash($password, $db_user['salt']) != $db_user['password'])) return false;
 
 		return $db_user;
     }
 
-	/**
-	 * Get two array with users and groups
-	 */
-	private function getRecords() {
-		$query = array(
-			'SELECT'	=> '*',
-			'FROM'		=> $this->db_table,
-			'ORDER BY'	=> 'id'
-		);
-
-		if (!$result = NFW::i()->db->query_build($query)) {
-			$this->error('Unable to fetch records', __FILE__, __LINE__, NFW::i()->db->error());
-			return false;
-		}
-		if (!NFW::i()->db->num_rows($result)) {
-			return array(array(), array());
-		}
-
-		$users = $groups = array();
-		while($cur_record = NFW::i()->db->fetch_assoc($result)) {
-			if ($cur_record['is_group']) {
-				$groups[] = $cur_record;
-			}
-			else {
-				$users[] = $cur_record;
-			}
-		}
-
-		return array($users, $groups);
-	}
-
-
-    protected function save() {
-    	if ($this->record['id']) {
+    protected function loadServicettributes() {
+    	$this->service_attributes['group_id']['options'] = $this->getRecords(array('SELECT' => array('u.id', 'u.username AS `desc`'), 'filter' => array('is_group' => '1'), 'ORDER BY' => 'u.username'));
+    	array_unshift($this->service_attributes['group_id']['options'], array('id' => 0, 'desc' => $this->lang['No group']));
+    	
+    	return parent::loadServicettributes();
+    }
+    
+	protected function save($foo = array()) {    	if ($this->record['id']) {
     		return parent::save();
     	}
 
    		$salt = self::random_key(12, true);
 		$password_hash = self::hash($this->record['password'], $salt);
-
-		$query = array(
-			'INSERT'	=> 'username, realname, language, country, city, email, group_id, password, salt, registered, registration_ip',
-			'INTO'		=> $this->db_table,
-			'VALUES'	=> '\''.NFW::i()->db->escape($this->record['username']).'\', \''.NFW::i()->db->escape($this->record['realname']).'\', \''.NFW::i()->db->escape($this->record['language']).'\', \''.NFW::i()->db->escape($this->record['country']).'\', \''.NFW::i()->db->escape($this->record['city']).'\', \''.NFW::i()->db->escape($this->record['email']).'\', '.intval($this->record['group_id']).', \''.$password_hash.'\', \''.$salt.'\', '.time().', \''.logs::get_remote_address().'\''
-		);
-		if (!NFW::i()->db->query_build($query)) {
+		
+		$insert = array('password', 'salt', 'registered', 'registration_ip');
+		$values = array('\''.$password_hash.'\'', '\''.$salt.'\'', time(), '\''.logs::get_remote_address().'\'');
+		
+		foreach ($this->attributes as $varname=>$foo) {
+			$insert[] = '`'.$varname.'`';
+			$values[] = '\''.NFW::i()->db->escape($this->record[$varname]).'\'';
+		}
+			
+		if (!NFW::i()->db->query_build(array('INSERT' => implode(', ', $insert), 'INTO' => $this->db_table, 'VALUES' => implode(', ', $values)))) {
 			$this->error('Unable to insert record', __FILE__, __LINE__, NFW::i()->db->error());
 			return false;
+		
 		}
-
 		$this->record['id'] = NFW::i()->db->insert_id();
+		$this->reload();
 		return true;
     }
 
@@ -221,16 +203,21 @@ class users extends active_record {
     /**
      * Get array with users
      */
-    public function getUsers($options = array()) {
-    	$query = array(
-    		'SELECT'	=> '*',
-    		'FROM'		=> $this->db_table,
-    		'WHERE'		=> 'is_group=0',
-    		'ORDER BY'	=> 'id'
-    	);
-    	if (isset($options['group_id'])) {
-    		$query['WHERE'] = 'group_id='.intval($options['group_id']);
+    public function getRecords($options = array()) {
+    	$filter = isset($options['filter']) ? $options['filter'] : array();
+    	
+    	$where = array('u.is_group='.(isset($filter['is_group']) ? intval($filter['is_group']) : '0'));
+    	
+    	if (isset($filter['group_id'])) {
+    		$where[] = 'u.group_id='.intval($filter['group_id']);
     	}
+
+    	$query = array(
+   			'SELECT' => isset($options['SELECT']) && !empty($options['SELECT']) ? implode(', ', $options['SELECT']) : 'u.*',
+    		'FROM' => $this->db_table.' AS u',
+    		'WHERE' => implode (' AND ', $where),
+    		'ORDER BY' => isset($options['ORDER BY']) ? $options['ORDER BY'] : 'u.id'
+    	);
     	if (!$result = NFW::i()->db->query_build($query)) {
     		$this->error('Unable to fetch records', __FILE__, __LINE__, NFW::i()->db->error());
     		return false;
@@ -252,13 +239,12 @@ class users extends active_record {
      *
      * @return array with errors
      */
-	function validate($role = 'update') {
+	function validate($role = 'update', $foo = false) {
     	// Validate password (only for 'update_password')
     	if ($role == 'update_password') {
     		$errors = array();
 
     		if (strlen($this->record['password']) < 4) {
-				$lang_profile = NFW::i()->getLang('profile');
             	$errors['password'] = $this->lang['Errors_password_too_short'];
     		}
 
@@ -271,85 +257,70 @@ class users extends active_record {
 
     	$errors = parent::validate($this->record, $this->attributes);
 
-    	// Validate 'unique' values
-    	foreach($this->attributes as $varname=>$attribute) {
-    		$error_varname = (isset($attribute['desc'])) ? $attribute['desc'] : $varname;
-
-    		if (isset($attribute['unique']) && $attribute['unique'] && isset($this->record[$varname]) && $this->record[$varname]) {
-				$query = array(
-					'SELECT' 	=> '*',
-					'FROM'		=> $this->db_table,
-					'WHERE'		=> $varname.'=\''.NFW::i()->db->escape($this->record[$varname]).'\''
-				);
-    			if ($this->record['id']) {
-    				$query['WHERE'] .= ' AND id<>'.$this->record['id'];
-    			}
-    			if (!$result = NFW::i()->db->query_build($query)) {
-    				$this->error('Unable to validate '.$varname, __FILE__, __LINE__, NFW::i()->db->error());
-    				return false;
-    			}
-
-    			if (NFW::i()->db->num_rows($result)) {
-    				$errors[$varname] = $this->lang['Error_dupe1'].$error_varname.$this->lang['Error_dupe2'];
-    			}
-    		}
-    	}
-
     	// Validate password (only on 'insert')
-    	if (($role == 'insert') && strlen($this->record['password']) < 4) {
+    	if (!$this->record['id'] && (!isset($this->record['password']) || strlen($this->record['password']) < 4)) {
             $errors['password'] = $this->lang['Errors_password_too_short'];
     	}
 
         return $errors;
     }
 
-	function actionAdmin() {
-		list ($users, $groups) = $this->getRecords();
-		foreach ($groups as $g) {
-			$this->attributes['group_id']['options'][] = array(
-				'id' => $g['id'],
-				'desc' => $g['username'],
-			);
-		}
-
-		return $this->renderAction(array(
-			'users' => $users,
-			'groups' => $groups
-		));
+	function actionAdminAdmin() {
+		$this->loadServicettributes();
+		
+		return $this->renderAction(array('records' => $this->getRecords()));
 	}
 
-    function actionInsert() {
+	function actionAdminIp2geo() {
+		require_once(NFW_ROOT.'helpers/SxGeo/SxGeo.php');
+		$SxGeo = new SxGeo(PROJECT_ROOT.'var/SxGeoCity.dat');
+		if (!$result = $SxGeo->getCityFull($_GET['ip'])) {
+			NFW::i()->renderJSON(array('result' => 'failed'));
+		}
+		
+		$pfix = NFW::i()->lang['lang'] == 'ru' ? '_ru' : '_en';
+		
+		NFW::i()->renderJSON(array(
+			'result' => 'success',
+			'city' => $result['city']['name'.$pfix],
+			'region' => $result['region']['name'.$pfix],
+			'country' => $result['country']['name'.$pfix]
+		));
+	}
+	
+    function actionAdminInsert() {
     	if (empty($_POST)) return false;
 
+    	$this->loadServicettributes();
+    	
 		$this->error_report_type = 'active_form';
 
     	$this->formatAttributes($_POST);
     	$this->record['password'] = $_POST['password'];
+    	$this->record['is_blocked'] = 0;
 
-    	$errors = $this->validate('insert');
+    	$errors = $this->validate();
+    	if (strlen($this->record['password']) < 4) {
+    		$errors['password'] = $this->lang['Errors_password_too_short'];
+    	}
 		if (!empty($errors)) {
    			NFW::i()->renderJSON(array('result' => 'error', 'errors' => $errors));
 		}
-
+		
     	$this->save();
-    	if ($this->error) {
-    		NFW::i()->renderJSON(array('result' => 'error', 'errors' => array('general' => $this->last_msg)));
-    	}
+    	if ($this->error) return false;
+    	
    		NFW::i()->renderJSON(array('result' => 'success', 'record_id' => $this->record['id']));
     }
 
-    function actionUpdate() {
+    function actionAdminUpdate() {
+    	$this->error_report_type = empty($_POST) ? 'default' : 'active_form';
+    	
         if (!$this->load($_GET['record_id'])) return false;
 
+        $this->loadServicettributes();
+        
     	if (empty($_POST)) {
-    		list ($foo, $groups) = $this->getRecords();
-    		foreach ($groups as $g) {
-    			$this->attributes['group_id']['options'][] = array(
-    				'id' => $g['id'],
-    				'desc' => $g['username'],
-    			);
-    		}
-
     		return $this->renderAction();
     	}
 
@@ -362,14 +333,13 @@ class users extends active_record {
    			NFW::i()->renderJSON(array('result' => 'error', 'errors' => $errors));
 		}
 
-    	$is_ipdated = $this->save();
-    	if ($this->error) {
-			NFW::i()->renderJSON(array('result' => 'error', 'errors' => array('general' => $this->last_msg)));
-		}
-   		NFW::i()->renderJSON(array('result' => 'success', 'is_ipdated' => $is_ipdated));
+    	$is_updated = $this->save();
+    	if ($this->error) return false;
+    	
+   		NFW::i()->renderJSON(array('result' => 'success', 'is_updated' => $is_updated));
     }
 
-    function actionUpdatePassword() {
+    function actionAdminUpdatePassword() {
     	$this->error_report_type = 'active_form';
         if (!$this->load($_POST['record_id'])) return false;
 
@@ -392,23 +362,9 @@ class users extends active_record {
 		NFW::i()->renderJSON(array('result' => 'success'));
 	}
 
-    function actionDelete() {
+    function actionAdminDelete() {
     	$this->error_report_type = 'plain';
         if (!$this->load($_POST['record_id'])) return false;
-
-        /* Группу пока нельзя удалить
-        if ($this->record['is_group']) {
-	        $query = array(
-	        	'UPDATE'	=> $this->db_table,
-	        	'SET'		=> 'group_id=NULL',
-	        	'WHERE'		=> 'id='.$this->record['id']
-	        );
-	        if (!NFW::i()->db->query_build($query)) {
-	        	$this->error('Unable to update users groups',__FILE__, __LINE__,  NFW::i()->db->error());
-	        	return false;
-	        }
-        }
-        */
 
 		$this->delete();
         NFW::i()->stop();

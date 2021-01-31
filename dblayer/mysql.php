@@ -27,7 +27,7 @@ class DBLayer
 	);
 
 
-	function DBLayer($db_host, $db_username, $db_password, $db_name, $db_prefix, $p_connect)
+	function __construct($db_host, $db_username, $db_password, $db_name, $db_prefix, $p_connect)
 	{
 		$this->prefix = $db_prefix;
 
@@ -66,7 +66,7 @@ class DBLayer
 
 	function query($sql, $unbuffered = false)
 	{
-		if (strlen($sql) > 140000)
+		if (strlen($sql) > 14000000)
 			exit('Insane query. Aborting.');
 
 		if (defined('NFW_LOG_QUERIES'))
@@ -228,13 +228,12 @@ class DBLayer
 	}
 
 
-	function error()
-	{
-		$result['error_sql'] = @current(@end($this->saved_queries));
-		$result['error_no'] = @mysql_errno($this->link_id);
-		$result['error_msg'] = @mysql_error($this->link_id);
-
-		return $result;
+	function error() {
+		return array(
+		  'error_sql' => @current(@end($this->saved_queries)),
+		  'error_no' => @mysql_errno($this->link_id),
+		  'error_msg' => @mysql_error($this->link_id),
+	    );
 	}
 
 

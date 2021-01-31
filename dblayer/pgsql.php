@@ -37,14 +37,12 @@ class DBLayer
 	);
 
 
-	function DBLayer($db_host, $db_username, $db_password, $db_name, $db_prefix, $p_connect)
-	{
+	function __construct($db_host, $db_username, $db_password, $db_name, $db_prefix, $p_connect) {
 		$this->prefix = $db_prefix;
-
-		if ($db_host)
-		{
-			if (strpos($db_host, ':') !== false)
-			{
+		$connect_str = array();
+		
+		if ($db_host) {
+			if (strpos($db_host, ':') !== false) {
 				list($db_host, $dbport) = explode(':', $db_host);
 				$connect_str[] = 'host='.$db_host.' port='.$dbport;
 			}
@@ -266,10 +264,9 @@ class DBLayer
 	{
 		$query_id = $this->query_result;
 
-		if ($query_id && $this->last_query_text[$query_id] != '')
-		{
-			if (preg_match('/^INSERT INTO ([a-z0-9\_\-]+)/is', $this->last_query_text[$query_id], $table_name))
-			{
+		if ($query_id && $this->last_query_text[$query_id] != '') {
+		    $table_name = array();
+			if (preg_match('/^INSERT INTO ([a-z0-9\_\-]+)/is', $this->last_query_text[$query_id], $table_name)) {
 				// Hack (don't ask)
 				if (substr($table_name[1], -6) == 'groups')
 					$table_name[1] .= '_g';
@@ -310,13 +307,12 @@ class DBLayer
 	}
 
 
-	function error()
-	{
-		$result['error_sql'] = @current(@end($this->saved_queries));
-		$result['error_no'] = false;
-		$result['error_msg'] = $this->error_msg;
-
-		return $result;
+	function error() {
+	    return array(
+    		'error_sql' => @current(@end($this->saved_queries)),
+    		'error_no' => false,
+    		'error_msg' => $this->error_msg,
+        );
 	}
 
 
@@ -411,7 +407,7 @@ class DBLayer
 		// Add unique keys
 		if (isset($schema['UNIQUE KEYS']))
 		{
-			foreach ($schema['UNIQUE KEYS'] as $key_name => $key_fields)
+			foreach ($schema['UNIQUE KEYS'] as $key_fields)
 				$query .= 'UNIQUE ('.implode(',', $key_fields).'),'."\n";
 		}
 

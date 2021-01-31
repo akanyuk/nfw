@@ -23,12 +23,30 @@ function formatDateTime (unixTimestamp, withTime, noSeconds) {
     return noSeconds ? day + '.' + month + '.' + year + ' ' + hours + ':' + minutes : day + '.' + month + '.' + year + ' ' + hours + ':' + minutes + ':' + seconds;
 }
 
+function htmlspecialchars(str) {
+	if (typeof(str) == "string") {
+		str = str.replace(/&/g, "&amp;"); /* must do &amp; first */
+		str = str.replace(/"/g, "&quot;");
+		str = str.replace(/'/g, "&#039;");
+		str = str.replace(/</g, "&lt;");
+		str = str.replace(/>/g, "&gt;");
+	}
+	
+	return str;
+}
+
 function number_format(number, decimals, dec_point, thousands_sep) {	// Format a number with grouped thousands
 	// 
 	// +   original by: Jonas Raoni Soares Silva (http://www.jsfromhell.com)
 	// +   improved by: Kevin van Zonneveld (http://kevin.vanzonneveld.net)
 	// +	 bugfix by: Michael White (http://crestidg.com)
-	var i, j, kw, kd, km;
+	var i, j, kw, kd, km, minus = '';
+
+	if (number < 0) {
+		minus = "-";
+		number = number*-1;
+	}
+
 
 	// input sanitation & defaults
 	if (isNaN(decimals = Math.abs(decimals)) ){
@@ -55,7 +73,7 @@ function number_format(number, decimals, dec_point, thousands_sep) {	// Format a
 	kd = (decimals ? dec_point + Math.abs(number - i).toFixed(decimals).replace(/-/, 0).slice(2) : "");
 
 
-	return km + kw + kd;
+	return minus + km + kw + kd;
 }
 
 function randomString(len) {

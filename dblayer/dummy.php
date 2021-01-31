@@ -10,6 +10,7 @@ class DBLayer {
 	function get_version() { return array('name' => 'Dummy DB', 'version'	=> ''); }
 	function get_num_queries() { return 0; }
 	function close() { return; }
+	function escape($str) { return $str; }
 /*	
 	function start_transaction() return;
 	function end_transaction() return;
@@ -23,7 +24,6 @@ class DBLayer {
 	function insert_id() return false;
 	function get_saved_queries() return array();
 	function free_result($query_id = false) return;
-	function escape($str) return $str;
 	function set_names($names) return;
 	function table_exists($table_name, $no_prefix = false) return false;
 	function field_exists($table_name, $field_name, $no_prefix = false) return false;

@@ -1,6 +1,9 @@
 <?php
-	ob_start();
-	$lang_media = NFW::i()->getLang('media');
+/**
+ * @var array $records 
+ */
+$lang_media = NFW::i()->getLang('media');
+ob_start();
 ?>
 {
 <?php if (isset($_GET['ui']) && $_GET['ui'] == 'bootstrap'): ?>
@@ -20,6 +23,8 @@
 		"url": "<?php echo $a['url']?>",
 		"filename": <?php echo json_encode($a['filename'])?>,
 		"basename": <?php echo json_encode($a['basename'])?>,
+		"extension": <?php echo json_encode($a['extension'])?>,
+		"tmb_prefix": <?php echo isset($a['tmb_prefix']) ? json_encode($a['tmb_prefix']) : 'null'?>,
 		"comment": <?php echo $a['comment'] ? json_encode($a['comment']) : '""'?>
 	}<?php if ($records_counter++ < count($records) - 1) echo ','; }?>
 	],

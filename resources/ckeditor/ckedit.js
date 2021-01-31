@@ -1,20 +1,6 @@
 var CKEDITOR_BASEPATH = '/assets/ckeditor/';
 
 $(document).ready(function(){
-	// Custom language values
-	if ($('html').attr('lang') == 'ru') {
-		var ckLng = {
-			'language': 'ru',
-			'afSave': 'Сохранить изменения'
-		};
-	}
-	else {
-		var ckLng = {
-			'language': 'en',
-			'afSave': 'Save setting'
-		};
-	}
-	
 	/* CKEditor function
 	 * Available options:
 	 * height		textarea height 
@@ -22,18 +8,17 @@ $(document).ready(function(){
 	 * toolbar		Toolbar type: 'Full' for extended toolbar 
 	 * media		`owner_class` for media uploading
 	 * media_owner	`owner_id` for media uploading
+	 * css			path to stylesheet
 	 */
 	$.fn.CKEDIT = function(options) {
 		var oTextarea = $(this);
 		if (!options) options = {};
 
-		options.save_button = isNaN(options.save_button) || options.save_button ? true : false;
-		
 		// Select toolbar
     	if (options.toolbar == 'Full') {
 	    	var ckToolbar = [
-				{ name: 'document', items: [ 'active_form_save' ]},
-				{ name: 'basicstyles', items: [ 'Format', 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript' ]},
+				{ name: 'document', items: [ 'Save' ]},
+				{ name: 'basicstyles', items: [ 'Format', 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', 'TextColor' ]},
 				{ name: 'paragraph', items: [ 'NumberedList', 'BulletedList', '-', 'HorizontalRule', 'Blockquote', 'CreateDiv' ]},
 				{ name: 'justify', items: [ 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' ]},
 				{ name: 'insert', items: [ 'Link', 'Unlink', 'Anchor', '-', 'Image', 'Table', 'Iframe' ]},
@@ -42,7 +27,7 @@ $(document).ready(function(){
 	    }
 	    else {
 	    	var ckToolbar = [
- 		   		{ name: 'document', items: [ 'active_form_save' ]},
+ 		   		{ name: 'document', items: [ 'Save' ]},
  				{ name: 'basicstyles', items: [ 'Format', 'Bold', 'Italic', '-', 'NumberedList', 'BulletedList' ]},
  				{ name: 'justify', items: [ 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' ]},
  				{ name: 'insert', items: [ 'Link', 'Unlink', '-', 'Image', 'Table' ]},
@@ -51,44 +36,33 @@ $(document).ready(function(){
     	}
 		
 		var cfg = {
-			language: ckLng.language,
+			language: $('html').attr('lang') == 'ru' ? 'ru' : 'en',
 			toolbar: ckToolbar,
 			height: options.height ? options.height : 400,
-			removePlugins: 'colorbutton,find,flash,font,forms,newpage,removeformat,smiley,specialchar,stylescombo,templates',
+			removePlugins: 'find,flash,font,forms,newpage,removeformat,smiley,specialchar,stylescombo,templates',
+			extraPlugins: 'image2',
 			format_tags: 'p;h1;h2;h3;pre',
 			on: {
 				configLoaded: function() {
 					// Allow HTML
 					this.config.protectedSource.push( /<script[\s\S]*?script>/g ); /* script tags */
 					this.config.allowedContent = true; /* all tags */
-					
-	 	 		   	// Add `active_form` save
-					if (options.save_button) {
-		 		    	this.addCommand('active_form_save', {
-		 	 				exec: function(editor) {
-		 	 					oTextarea.closest('form').submit();
-		 	 				}
-		 	 			});
-		 		    	this.ui.addButton('active_form_save', {
-		 					label : ckLng.afSave,
-		 					command : 'active_form_save',
-		 			 	    icon: 'cke_save.png',
-		 				});
-					}
 		    	}
 		    }
 		};
 		
+		if (options.css) {
+			cfg.contentsCss = options.css;
+		}
+		
 		if (options.media) {
-		   	// Add `media` support
-			var owner_str = options.media_owner ? '&owner_class=' + options.media + '&owner_id=' + options.media_owner : '&owner_class=' + options.media;
-			
-			cfg.filebrowserBrowseUrl = '/media.php?action=list&tpl=list_CKE' + owner_str;
-			cfg.filebrowserImageBrowseUrl = '/media.php?action=list&tpl=list_CKE' + owner_str + '&type=image&t[1][x]=100&t[2][y]=100&t[3][x]=175&t[4][y]=175';
-			cfg.filebrowserWindowWidth = '30%';
-			cfg.filebrowserWindowHeight = '200';				
-			cfg.filebrowserImageWindowWidth = '100%';
+			cfg.filebrowserImageWindowWidth = '1000';
 			cfg.filebrowserImageWindowHeight = '500';					
+
+			var owner_str = options.media_owner ? '&owner_class=' + options.media + '&owner_id=' + options.media_owner : '&owner_class=' + options.media;
+			cfg.filebrowserUploadUrl = '/media.php?action=CKE_upload' + owner_str;
+			cfg.filebrowserBrowseUrl = '/media.php?action=CKE_list' + owner_str;
+			cfg.filebrowserImageBrowseUrl = '/media.php?action=CKE_list&type=images' + owner_str;
 		}
 		
 		oTextarea.ckeditor(cfg);

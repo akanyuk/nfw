@@ -1,7 +1,0 @@
-FORM.active-form LABEL { font-weight: normal; }
-FORM.active-form .help-block { display: block; height: 15px; padding: 0; font-size: 80%; overflow: hidden; }
-FORM.active-form .form-group { margin-bottom: 0; }
-	
-/* Fix uniform in active-form */
-FORM.active-form .selector { top: -6px; }
-FORM.active-form .checker { top: -2px; }

@@ -1,23 +1,12 @@
 <?php
-// Russian language
+/**
+ * Russian language
+ *
+ * @var array $lang_permissions
+ **/
 
 $lang_permissions = array(
-	// Action 'admin'
-	'Current_Permissions' 	=> 'Текущие права пользователей',
-	'User_Permissions_List' => 'Список прав пользователя',
-
-	// Action 'insert'
-	'New' 			=> 'Новая запись',
-	'Role' 			=> 'Роль',
-	'Role_Rules'	=> 'Правила роли',
-	'Save' 			=> 'Сохранить',
-	'Back'			=> 'Вернуться к списку',
-	'Role_Added'	=> 'Роль добавлена',
-
-	// Action 'delete'
-	'Delete_Confirm'  => 'Удалить запись?\nВосстановление не возможно!',
-
-	// Errors
-	'Errors' => array(
-	),	
+	'Role rules'	=> 'Список прав роли',
+	'Save changes'	=> 'Сохранить изменения',
+	'Success' 		=> 'Права учетной записи обновлены',
 );

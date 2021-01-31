@@ -27,7 +27,7 @@ class DBLayer
 	);
 
 
-	function DBLayer($db_host, $db_username, $db_password, $db_name, $db_prefix, $foo)
+	function __construct($db_host, $db_username, $db_password, $db_name, $db_prefix, $foo)
 	{
 		$this->prefix = $db_prefix;
 
@@ -41,7 +41,7 @@ class DBLayer
 			$this->link_id = @mysqli_connect($db_host, $db_username, $db_password, $db_name);
 
 		if (!$this->link_id)
-			error('Unable to connect to MySQL and select database.<br />MySQL reported: '.mysqli_connect_error(), __FILE__, __LINE__);
+			trigger_error('Unable to connect to MySQL and select database.<br />MySQL reported: '.mysqli_connect_error());
 
 		// Setup the client-server character set (UTF-8)
 		if (!defined('NFW_NO_SET_NAMES'))
@@ -65,7 +65,7 @@ class DBLayer
 
 	function query($sql, $unbuffered = false)
 	{
-		if (strlen($sql) > 140000)
+		if (strlen($sql) > 14000000)
 			exit('Insane query. Aborting.');
 
 		if (defined('NFW_LOG_QUERIES'))
@@ -228,13 +228,12 @@ class DBLayer
 	}
 
 
-	function error()
-	{
-		$result['error_sql'] = @current(@end($this->saved_queries));
-		$result['error_no'] = @mysqli_errno($this->link_id);
-		$result['error_msg'] = @mysqli_error($this->link_id);
-
-		return $result;
+	function error() {
+	    return array(
+		  'error_sql' => @current(@end($this->saved_queries)),
+		  'error_no' => @mysqli_errno($this->link_id),
+		  'error_msg' => @mysqli_error($this->link_id),
+        );
 	}
 
 
@@ -348,7 +347,7 @@ class DBLayer
 		// We remove the last two characters (a newline and a comma) and add on the ending
 		$query = substr($query, 0, strlen($query) - 2)."\n".') ENGINE = '.(isset($schema['ENGINE']) ? $schema['ENGINE'] : 'MyISAM').' CHARACTER SET utf8';
 
-		$this->query($query) or error(__FILE__, __LINE__);
+		$this->query($query) or trigger_error();
 	}
 
 
@@ -357,7 +356,7 @@ class DBLayer
 		if (!$this->table_exists($table_name, $no_prefix))
 			return;
 
-		$this->query('DROP TABLE '.($no_prefix ? '' : $this->prefix).$table_name) or error(__FILE__, __LINE__);
+		$this->query('DROP TABLE '.($no_prefix ? '' : $this->prefix).$table_name) or trigger_error();
 	}
 
 
@@ -371,7 +370,7 @@ class DBLayer
 		if ($default_value !== null && !is_int($default_value) && !is_float($default_value))
 			$default_value = '\''.$this->escape($default_value).'\'';
 
-		$this->query('ALTER TABLE '.($no_prefix ? '' : $this->prefix).$table_name.' ADD '.$field_name.' '.$field_type.($allow_null ? ' ' : ' NOT NULL').($default_value !== null ? ' DEFAULT '.$default_value : ' ').($after_field != null ? ' AFTER '.$after_field : '')) or error(__FILE__, __LINE__);
+		$this->query('ALTER TABLE '.($no_prefix ? '' : $this->prefix).$table_name.' ADD '.$field_name.' '.$field_type.($allow_null ? ' ' : ' NOT NULL').($default_value !== null ? ' DEFAULT '.$default_value : ' ').($after_field != null ? ' AFTER '.$after_field : '')) or trigger_error();
 	}
 
 
@@ -385,7 +384,7 @@ class DBLayer
 		if ($default_value !== null && !is_int($default_value) && !is_float($default_value))
 			$default_value = '\''.$this->escape($default_value).'\'';
 
-		$this->query('ALTER TABLE '.($no_prefix ? '' : $this->prefix).$table_name.' MODIFY '.$field_name.' '.$field_type.($allow_null ? ' ' : ' NOT NULL').($default_value !== null ? ' DEFAULT '.$default_value : ' ').($after_field != null ? ' AFTER '.$after_field : '')) or error(__FILE__, __LINE__);
+		$this->query('ALTER TABLE '.($no_prefix ? '' : $this->prefix).$table_name.' MODIFY '.$field_name.' '.$field_type.($allow_null ? ' ' : ' NOT NULL').($default_value !== null ? ' DEFAULT '.$default_value : ' ').($after_field != null ? ' AFTER '.$after_field : '')) or trigger_error();
 	}
 
 
@@ -394,7 +393,7 @@ class DBLayer
 		if (!$this->field_exists($table_name, $field_name, $no_prefix))
 			return;
 
-		$this->query('ALTER TABLE '.($no_prefix ? '' : $this->prefix).$table_name.' DROP '.$field_name) or error(__FILE__, __LINE__);
+		$this->query('ALTER TABLE '.($no_prefix ? '' : $this->prefix).$table_name.' DROP '.$field_name) or trigger_error();
 	}
 
 
@@ -403,7 +402,7 @@ class DBLayer
 		if ($this->index_exists($table_name, $index_name, $no_prefix))
 			return;
 
-		$this->query('ALTER TABLE '.($no_prefix ? '' : $this->prefix).$table_name.' ADD '.($unique ? 'UNIQUE ' : '').'INDEX '.($no_prefix ? '' : $this->prefix).$table_name.'_'.$index_name.' ('.implode(',', $index_fields).')') or error(__FILE__, __LINE__);
+		$this->query('ALTER TABLE '.($no_prefix ? '' : $this->prefix).$table_name.' ADD '.($unique ? 'UNIQUE ' : '').'INDEX '.($no_prefix ? '' : $this->prefix).$table_name.'_'.$index_name.' ('.implode(',', $index_fields).')') or trigger_error();
 	}
 
 
@@ -412,6 +411,6 @@ class DBLayer
 		if (!$this->index_exists($table_name, $index_name, $no_prefix))
 			return;
 
-		$this->query('ALTER TABLE '.($no_prefix ? '' : $this->prefix).$table_name.' DROP INDEX '.($no_prefix ? '' : $this->prefix).$table_name.'_'.$index_name) or error(__FILE__, __LINE__);
+		$this->query('ALTER TABLE '.($no_prefix ? '' : $this->prefix).$table_name.' DROP INDEX '.($no_prefix ? '' : $this->prefix).$table_name.'_'.$index_name) or trigger_error();
 	}
 }
