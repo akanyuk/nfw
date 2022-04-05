@@ -1,0 +1,24 @@
+{
+    "name": "akanyuk/nfw",
+    "type": "library",
+    "description": "Yet another web site framework",
+    "keywords": ["convertor"],
+    "homepage": "https://github.com/akanyuk/nfw",
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "Andrey Marinov",
+            "email": "aka.nyuk@gmail.com",
+            "homepage": "http://nyuk.retropc.ru",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.0",
+    },
+    "autoload": {
+        "psr-0": {
+            "NFW": ""
+        }
+    }
+}
