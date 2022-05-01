@@ -7,7 +7,7 @@ if (NFW::i()->user['is_blocked']) {
 NFW::i()->current_controler = 'admin';
 
 $top_menu = array();
-if (defined(NFW::i()->cfg['admin_top_menu']) && file_exists(NFW::i()->cfg['admin_top_menu'])) {
+if (isset(NFW::i()->cfg['admin_top_menu']) && file_exists(NFW::i()->cfg['admin_top_menu'])) {
     $topMenuCfg = require(NFW::i()->cfg['admin_top_menu']);
 
     foreach ($topMenuCfg as $i) {
