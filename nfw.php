@@ -312,11 +312,11 @@ class NFW {
             $this->current_language = $_COOKIE[$lang_cookie];
         } elseif (isset($this->cfg['set_language_by_geoip']) && $this->cfg['set_language_by_geoip']) {
             if (isset($this->cfg['SxGeo.dat']) && file_exists($this->cfg['SxGeo.dat'])) {
-                require_once(__DIR__ . 'helpers/SxGeo/SxGeo.php');
+                require_once(__DIR__ . '/helpers/SxGeo/SxGeo.php');
                 $SxGeo = new SxGeo($this->cfg['SxGeo.dat']);
                 $country = $SxGeo->get($_SERVER['REMOTE_ADDR']);
             } else if (defined('PROJECT_ROOT') && file_exists(PROJECT_ROOT . 'var/SxGeo.dat')) {
-                require_once(__DIR__ . 'helpers/SxGeo/SxGeo.php');
+                require_once(__DIR__ . '/helpers/SxGeo/SxGeo.php');
                 $SxGeo = new SxGeo(PROJECT_ROOT . 'var/SxGeo.dat');
                 $country = $SxGeo->get($_SERVER['REMOTE_ADDR']);
             } else {
