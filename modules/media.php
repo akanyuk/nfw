@@ -202,7 +202,7 @@ class media extends active_record {
         if ($file['error']) switch ($file['error']) {
             case 1: // UPLOAD_ERR_INI_SIZE
             case 2: // UPLOAD_ERR_FORM_SIZE
-                $this->error($lang_media['Errors']['Ambigious_file'], __FILE__, __LINE__);
+                $this->error($lang_media['Errors']['File too big'], __FILE__, __LINE__);
                 return false;
             case 3: // UPLOAD_ERR_PARTIAL
                 $this->error($lang_media['Errors']['Partial_Upload'], __FILE__, __LINE__);
@@ -230,7 +230,7 @@ class media extends active_record {
         }
 
         $size = getimagesize($file['tmp_name']);
-        $is_image = in_array($size['mime'], array('image/gif', 'image/png', 'image/jpeg')) ? true : false;
+        $is_image = is_array($size['mime']) && in_array($size['mime'], array('image/gif', 'image/png', 'image/jpeg'));
 
         if (isset($this->session['images_only']) && $this->session['images_only'] && !$is_image) {
             $this->error($lang_media['Errors']['Wrong_image_type'], __FILE__, __LINE__);
