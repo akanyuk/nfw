@@ -230,19 +230,19 @@ class media extends active_record {
         }
 
         $size = getimagesize($file['tmp_name']);
-        $is_image = is_array($size['mime']) && in_array($size['mime'], array('image/gif', 'image/png', 'image/jpeg'));
+        $isImage = isset($size['mime']) && in_array($size['mime'], array('image/gif', 'image/png', 'image/jpeg'));
 
-        if (isset($this->session['images_only']) && $this->session['images_only'] && !$is_image) {
+        if (isset($this->session['images_only']) && $this->session['images_only'] && !$isImage) {
             $this->error($lang_media['Errors']['Wrong_image_type'], __FILE__, __LINE__);
             return false;
         }
 
-        if ($is_image && isset($this->session['image_max_x']) && $size[0] > $this->session['image_max_x']) {
+        if ($isImage && isset($this->session['image_max_x']) && $size[0] > $this->session['image_max_x']) {
             $this->error($lang_media['Errors']['Wrong_image_size'], __FILE__, __LINE__);
             return false;
         }
 
-        if ($is_image && isset($this->session['image_max_y']) && $size[1] > $this->session['image_max_y']) {
+        if ($isImage && isset($this->session['image_max_y']) && $size[1] > $this->session['image_max_y']) {
             $this->error($lang_media['Errors']['Wrong_image_size'], __FILE__, __LINE__);
             return false;
         }
