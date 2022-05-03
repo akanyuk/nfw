@@ -12,11 +12,14 @@ if (isset(NFW::i()->cfg['admin_top_menu']) && file_exists(NFW::i()->cfg['admin_t
 
     foreach ($topMenuCfg as $i) {
         // Check permissions
-        if (isset($i['perm'])) {
-            list($module, $action) = explode(',', $i['perm']);
-            if (NFW::i()->checkPermissions($module, $action)) {
-                $top_menu[] = $i;
-            }
+        if (!isset($i['perm'])) {
+            $top_menu[] = $i;
+            continue;
+        }
+        
+        list($module, $action) = explode(',', $i['perm']);
+        if (NFW::i()->checkPermissions($module, $action)) {
+            $top_menu[] = $i;
         }
     }
 } else if (defined("PROJECT_ROOT") && file_exists(PROJECT_ROOT . 'include/configs/admin_menu.php')) {
