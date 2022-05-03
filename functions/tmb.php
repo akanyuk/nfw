@@ -22,10 +22,26 @@ class _tmbGenerator {
 	var $error = false;
 	var $media_class = 'media';
 	var $format = 'png';
-		
-	function __construct($request, $tmb_width = 0, $tmb_height = 0, $options = array()) {
-		// Save original request
-		$this->request = $request;
+    private $request;
+    /**
+     * @var int|mixed
+     */
+    private $tmb_width;
+    /**
+     * @var int|mixed
+     */
+    private $tmb_height;
+    /**
+     * @var false|GdImage|resource
+     */
+    private $src_img;
+    /**
+     * @var bool
+     */
+    private $tmb_exist;
+
+    function __construct($request, $tmb_width = 0, $tmb_height = 0, $options = array()) {
+		$this->request = $request; // Saving original request
 		$this->tmb_width  = $tmb_width;
 		$this->tmb_height = $tmb_height;
 		$this->options = $options;
@@ -33,7 +49,7 @@ class _tmbGenerator {
 		if (is_array($request)) {
 			if (!isset($request['url'])) {
 				$this->error = true;
-				return;
+				return false;
 			}
 			
 			// Для `secure_storage` возвращаем в случае полного размера не урл, а физическое расположение картинки
@@ -46,14 +62,13 @@ class _tmbGenerator {
 		// Finding original file
 		if (is_array($request) && isset($request['fullpath'])) {
 			$fullpath = $request['fullpath'];
-		}
-		else {
+		} else {
 			$fullpath = str_replace('//', '/', PROJECT_ROOT.parse_url($this->url, PHP_URL_PATH));
 		}
 		
 		if (!file_exists($fullpath)) {
 			$this->error = true;
-			return;
+            return false;
 		}
 		
 		if (isset($options['media_class'])) {
@@ -97,14 +112,13 @@ class _tmbGenerator {
 		$this->img_type = str_replace('jpeg', 'jpg', image_type_to_extension($this->img_type, false));
 		if (!in_array($this->img_type, array('png', 'jpg', 'gif'))) {
 			$this->error = true;
-			return;
+            return false;
 		}
 		
 		if (isset($options['format'])) {
 			if (in_array($options['format'], array('png', 'jpg', 'gif'))) {
 				$this->format = $options['format'];
-			}
-			else {
+			} else {
 				// Use same as source format
 				$this->format = $this->img_type;
 			}
@@ -116,16 +130,17 @@ class _tmbGenerator {
 		if (is_array($request) && isset($request['tmb_dir'])) {
 			$this->tmb_dir = $request['tmb_dir'];
 			$this->tmb_fullpath = $this->tmb_dir.'/'.$this->tmb_filename;
-		}
-		else {
-			$owner_class = preg_replace('/(.*\/'.$this->media_class.'\/)/', '', $path_parts['dirname']);
+		} else {
+			$owner_class = preg_replace('/(.*\/?'.$this->media_class.'\/)/', '', $path_parts['dirname']);
 			$this->tmb_dir = NFW::i()->absolute_path.'/'.$this->media_class.'/'.$owner_class.'/tmb/';
 			$this->tmb_fullpath = PROJECT_ROOT.$this->media_class.'/'.$owner_class.'/tmb/'.$this->tmb_filename;
 		}
 		
 
 		$this->tmb_exist = file_exists($this->tmb_fullpath) && (!isset($options['force_generate']) || !$options['force_generate']) ? true : false;
-		if ($this->tmb_exist) return;
+		if ($this->tmb_exist) {
+		    return true;
+        }
 		
 		// Create source instance
 		switch ($this->img_type) {
@@ -139,6 +154,8 @@ class _tmbGenerator {
 				$this->src_img = @imagecreatefromgif($fullpath);
 				break;
 		}
+
+		return true;
 	}
 	
 	private function generateTmb() {
