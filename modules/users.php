@@ -272,14 +272,21 @@ class users extends active_record {
     }
 
     function actionAdminIp2geo() {
-        if (!isset(NFW::i()->cfg['SxGeo.dat']) || !file_exists(NFW::i()->cfg['SxGeo.dat'])) {
-            NFW::i()->renderJSON(array('result' => 'failed'));
+        if (!isset(NFW::i()->cfg['SxGeoCity.dat']) || !file_exists(NFW::i()->cfg['SxGeoCity.dat'])) {
+            NFW::i()->renderJSON(array(
+                'result' => 'failed',
+                'message' => 'File SxGeoCity.dat not found'
+            ));
         }
 
         require_once(__DIR__ . '/../helpers/SxGeo/SxGeo.php');
-        $SxGeo = new SxGeo(NFW::i()->cfg['SxGeo.dat']);
+        $SxGeo = new SxGeo(NFW::i()->cfg['SxGeoCity.dat']);
+
         if (!$result = $SxGeo->getCityFull($_GET['ip'])) {
-            NFW::i()->renderJSON(array('result' => 'failed'));
+            NFW::i()->renderJSON(array(
+                'result' => 'failed',
+                'message' => 'SxGeo->getCityFull failed'
+            ));
         }
 
         $postFix = NFW::i()->lang['lang'] == 'ru' ? '_ru' : '_en';
