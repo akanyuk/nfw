@@ -54,7 +54,7 @@ class NFW {
 
     protected $current_language = false;
 
-    protected $permissions = null;        //Permissions list for current user
+    protected $permissions = null;        // Permissions list for current user
 
     protected $resources_depends = array(
         'bootstrap' => array(
@@ -303,7 +303,7 @@ class NFW {
     function setLanguage($language = false) {
         $lang_cookie = NFW::i()->cfg['cookie']['name'] . '_lang';
 
-		if (isset($this->cfg['set_language_by_get']) && $this->cfg['set_language_by_get'] && isset($_GET['lang']) && in_array($_GET['lang'], $this->cfg['available_languages'])) {
+        if (isset($this->cfg['set_language_by_get']) && $this->cfg['set_language_by_get'] && isset($_GET['lang']) && in_array($_GET['lang'], $this->cfg['available_languages'])) {
             $this->current_language = $_GET['lang'];
             $this->setCookie($lang_cookie, $_GET['lang'], time() + 60 * 60 * 24 * 30);
             $_SERVER['REQUEST_URI'] = preg_replace('/(&?lang=' . $_GET['lang'] . ')/', '', $_SERVER['REQUEST_URI']);
@@ -323,19 +323,19 @@ class NFW {
                 $country = "unknown";
             }
 
-			if (in_array($country, array('RU', 'UA', 'BY', 'KZ'))) {
+            if (in_array($country, array('RU', 'UA', 'BY', 'KZ'))) {
                 $this->current_language = 'Russian';
             } else {
                 $this->current_language = 'English';
             }
-		} else if (isset($this->cfg['default_language'])) {
+        } else if (isset($this->cfg['default_language'])) {
             $this->current_language = $this->cfg['default_language'];
         } else {
             $this->current_language = 'English';
         }
-		
-		$this->lang = $this->getLang('nfw_main');
-	}
+
+        $this->lang = $this->getLang('nfw_main');
+    }
 
     // Authenticate user if possible via activeForm
     function login($action = '', $login_options = array()) {
@@ -444,11 +444,14 @@ class NFW {
     function setCookie($name, $value, $expire = 0) {
         // Enable sending of a P3P header
         header('P3P: CP="CUR ADM"');
-
-        if (version_compare(PHP_VERSION, '5.2.0', '>='))
-            setcookie($name, $value, $expire, $this->cfg['cookie']['path'], $this->cfg['cookie']['domain'], $this->cfg['cookie']['secure'], true);
-        else
-            setcookie($name, $value, $expire, $this->cfg['cookie']['path'] . '; HttpOnly', $this->cfg['cookie']['domain'], $this->cfg['cookie']['secure']);
+        setcookie(
+            $name,
+            $value,
+            $expire,
+            $this->cfg['cookie']['path'],
+            $this->cfg['cookie']['domain'],
+            $this->cfg['cookie']['secure'],
+            true);
     }
 
     function registerFunction($functionPath = '') {
@@ -579,8 +582,9 @@ class NFW {
     function assets($path = '', $post_process = false) {
         if (!file_exists(PROJECT_ROOT . 'assets/' . $path)) {
             if (strstr($path, '/')) {
-                $first_dir = reset(explode('/', $path));
-                $this->registerResource($first_dir);
+                $pathParts = explode('/', $path);
+                $firstDir = $pathParts[0];
+                $this->registerResource($firstDir);
             } else {
                 $this->registerResource($path);
             }
@@ -602,8 +606,8 @@ class NFW {
             return false;
     }
 
-    function renderJSON($data, $_reqursive = null, $wrap_textarea = true) {
-        if ($_reqursive !== null) {
+    function renderJSON($data, $_recursive = null, $wrap_textarea = true) {
+        if ($_recursive !== null) {
             $result = '{' . "\n";
             foreach ($data as $key => $value) {
                 if (is_array($value)) {
@@ -613,16 +617,15 @@ class NFW {
                 }
             }
             return substr($result, 0, -1) . "\n" . '}';
-
         }
 
         $result = $this->renderJSON($data, true, $wrap_textarea);
         // wrap json in a textarea if the request did not come from xhr
         if (!$wrap_textarea || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest')) {
             $this->stop($result);
-        } else {
-            $this->stop('<textarea>' . $result . '</textarea>');
         }
+
+        $this->stop('<textarea>' . $result . '</textarea>');
     }
 
     public function assign($name, $value) {

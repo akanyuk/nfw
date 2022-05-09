@@ -18,7 +18,8 @@
   "require": {
     "php": ">=5.4.0",
     "ext-mbstring": "*",
-    "ext-gd": "*"
+    "ext-gd": "*",
+    "ext-json": "*",
   },
   "autoload": {
     "psr-0": {
