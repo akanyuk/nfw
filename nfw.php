@@ -117,7 +117,7 @@ class NFW {
 
     // Rendering vars
     protected $_template_var = array();
-    protected $_head_assets = array();    // Needfull assets
+    protected $_head_assets = array();    // Needful assets
 
     private $_start_execution;
 
@@ -646,11 +646,11 @@ class NFW {
         return ob_get_clean();
     }
 
-    function display($tpl, $is_prerendered_content = false) {
-        $content = $is_prerendered_content ? strval($tpl) : $this->fetch($this->findTemplatePath($tpl));
+    function display($tpl, $isContentRendered = false) {
+        $content = $isContentRendered ? strval($tpl) : $this->fetch($this->findTemplatePath($tpl));
 
         // Check if jQuery required by template (only for normal output)
-        if (!$is_prerendered_content && (strstr($content, '$(document).ready') || strstr($content, '$(function()'))) {
+        if (!$isContentRendered && (strstr($content, '$(document).ready') || strstr($content, '$(function()'))) {
             $this->registerResource('jquery', array('atStart' => true));
         }
 

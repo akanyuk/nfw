@@ -66,7 +66,7 @@ class media extends active_record {
         return true;
     }
 
-    private function removeExpieredSessions() {
+    private function removeExpiredSessions() {
         if (!$result = NFW::i()->db->query_build(array(
             'SELECT' => 'session_id',
             'FROM' => 'media_sessions',
@@ -125,7 +125,7 @@ class media extends active_record {
         }
     }
 
-    protected function formatRecord($record) {
+    protected function formatRecord($record, $options = array()) {
         $lang_media = NFW::i()->getLang('media');
 
         // Filesize str
@@ -142,10 +142,12 @@ class media extends active_record {
         $record['extension'] = isset($path_parts['extension']) ? $path_parts['extension'] : '';
 
         // icons
-        NFW::i()->registerResource('icons');
-        $record['icons']['16x16'] = file_exists($this->assets_path . '/icons/16x16/mimetypes/' . $record['extension'] . '.png') ? NFW::i()->absolute_path . '/assets/icons/16x16/mimetypes/' . $record['extension'] . '.png' : NFW::i()->absolute_path . '/assets/icons/16x16/mimetypes/unknown.png';
-        $record['icons']['32x32'] = file_exists($this->assets_path . '/icons/32x32/mimetypes/' . $record['extension'] . '.png') ? NFW::i()->absolute_path . '/assets/icons/32x32/mimetypes/' . $record['extension'] . '.png' : NFW::i()->absolute_path . '/assets/icons/32x32/mimetypes/unknown.png';
-        $record['icons']['64x64'] = file_exists($this->assets_path . '/icons/64x64/mimetypes/' . $record['extension'] . '.png') ? NFW::i()->absolute_path . '/assets/icons/64x64/mimetypes/' . $record['extension'] . '.png' : NFW::i()->absolute_path . '/assets/icons/64x64/mimetypes/unknown.png';
+        if (!isset($options['skipLoadIcons']) || !$options['skipLoadIcons']) {
+            NFW::i()->registerResource('icons');
+            $record['icons']['16x16'] = file_exists($this->assets_path . '/icons/16x16/mimetypes/' . $record['extension'] . '.png') ? NFW::i()->absolute_path . '/assets/icons/16x16/mimetypes/' . $record['extension'] . '.png' : NFW::i()->absolute_path . '/assets/icons/16x16/mimetypes/unknown.png';
+            $record['icons']['32x32'] = file_exists($this->assets_path . '/icons/32x32/mimetypes/' . $record['extension'] . '.png') ? NFW::i()->absolute_path . '/assets/icons/32x32/mimetypes/' . $record['extension'] . '.png' : NFW::i()->absolute_path . '/assets/icons/32x32/mimetypes/unknown.png';
+            $record['icons']['64x64'] = file_exists($this->assets_path . '/icons/64x64/mimetypes/' . $record['extension'] . '.png') ? NFW::i()->absolute_path . '/assets/icons/64x64/mimetypes/' . $record['extension'] . '.png' : NFW::i()->absolute_path . '/assets/icons/64x64/mimetypes/unknown.png';
+        }
 
         // mime_type
         $mimetypes = array(
@@ -535,7 +537,7 @@ class media extends active_record {
      * MAX_SESSION_SIZE	int
      */
     public function openSession($options, $form_data = array()) {
-        if (!$this->removeExpieredSessions()) return false;
+        if (!$this->removeExpiredSessions()) return false;
 
         $_data = array();
 
@@ -731,10 +733,14 @@ class media extends active_record {
         }
 
         $files = array();
-        $load_data = isset($options['load_data']) && $options['load_data'] ? true : false;
+        $load_data = isset($options['load_data']) && $options['load_data'];
+
+        $formatRecordOptions = array(
+            'skipLoadIcons' => isset($options['skipLoadIcons']) ? $options['skipLoadIcons'] : false,
+        );
 
         while ($cur_file = NFW::i()->db->fetch_assoc($result)) {
-            $cur_file = $this->formatRecord($cur_file);
+            $cur_file = $this->formatRecord($cur_file, $formatRecordOptions);
 
             if ($load_data) {
                 $this->loadData($cur_file);
@@ -753,12 +759,12 @@ class media extends active_record {
     function actionCKEList() {
         $this->error_report_type = 'plain';
 
-        if (isset($_GET['owner_class'])) {
-            $session_id = $this->calculateSessionId($_GET['owner_class'], isset($_GET['owner_id']) ? $_GET['owner_id'] : 0);
-        } else {
+        if (!isset($_GET['owner_class'])) {
             $this->error('Wrong request', __FILE__, __LINE__);
             return false;
         }
+
+        $session_id = $this->calculateSessionId($_GET['owner_class'], isset($_GET['owner_id']) ? $_GET['owner_id'] : 0);
 
         if (!$this->loadSession($session_id)) {
             $this->error('Unable to load session', __FILE__, __LINE__);
@@ -778,11 +784,11 @@ class media extends active_record {
     function actionCKEUpload() {
         $lang_media = NFW::i()->getLang('media');
 
-        if (isset($_GET['owner_class'])) {
-            $session_id = $this->calculateSessionId($_GET['owner_class'], isset($_GET['owner_id']) ? $_GET['owner_id'] : 0);
-        } else {
+        if (!isset($_GET['owner_class'])) {
             NFW::i()->stop(json_encode(array('uploaded' => '0', 'error' => array('message' => 'Wrong request'))));
         }
+
+        $session_id = $this->calculateSessionId($_GET['owner_class'], isset($_GET['owner_id']) ? $_GET['owner_id'] : 0);
 
         if (!$this->loadSession($session_id)) {
             NFW::i()->stop(json_encode(array('uploaded' => '0', 'error' => array('message' => 'Unable to load session'))));
