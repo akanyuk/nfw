@@ -392,6 +392,9 @@ class NFW {
             $CUsers->cookie_update($this->user);
             logs::write(logs::KIND_LOGIN);
 
+            // Долгая операция. Лучше сделать один раз заранее. Здесь самое место (?)
+            NFW::i()->registerResource('icons');
+
             $this->loginSuccess();
         }
 

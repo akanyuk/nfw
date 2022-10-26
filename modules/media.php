@@ -143,7 +143,6 @@ class media extends active_record {
 
         // icons
         if (!isset($options['skipLoadIcons']) || !$options['skipLoadIcons']) {
-            NFW::i()->registerResource('icons');
             $record['icons']['16x16'] = file_exists($this->assets_path . '/icons/16x16/mimetypes/' . $record['extension'] . '.png') ? NFW::i()->absolute_path . '/assets/icons/16x16/mimetypes/' . $record['extension'] . '.png' : NFW::i()->absolute_path . '/assets/icons/16x16/mimetypes/unknown.png';
             $record['icons']['32x32'] = file_exists($this->assets_path . '/icons/32x32/mimetypes/' . $record['extension'] . '.png') ? NFW::i()->absolute_path . '/assets/icons/32x32/mimetypes/' . $record['extension'] . '.png' : NFW::i()->absolute_path . '/assets/icons/32x32/mimetypes/unknown.png';
             $record['icons']['64x64'] = file_exists($this->assets_path . '/icons/64x64/mimetypes/' . $record['extension'] . '.png') ? NFW::i()->absolute_path . '/assets/icons/64x64/mimetypes/' . $record['extension'] . '.png' : NFW::i()->absolute_path . '/assets/icons/64x64/mimetypes/unknown.png';
