@@ -111,18 +111,24 @@ class users extends active_record {
     }
 
     public function cookie_update($cookie) {
-        if (!isset(NFW::i()->cfg['cookie'])) return false;
+        if (!isset(NFW::i()->cfg['cookie'])) {
+            return false;
+        }
 
-        // Send a new, updated cookie with a new expiration timestamp
         $expire = NFW::i()->cfg['cookie']['expire'] ? time() + NFW::i()->cfg['cookie']['expire'] : 0;
 
-        // Enable sending of a P3P header
-        header('P3P: CP="CUR ADM"');
-
-        if (version_compare(PHP_VERSION, '5.2.0', '>='))
-            setcookie(NFW::i()->cfg['cookie']['name'], base64_encode($cookie['id'] . '|' . $cookie['password'] . '|' . $expire . '|' . sha1($cookie['salt'] . $cookie['password'] . self::hash($expire, $cookie['salt']))), $expire, NFW::i()->cfg['cookie']['path'], NFW::i()->cfg['cookie']['domain'], NFW::i()->cfg['cookie']['secure'], true);
-        else
-            setcookie(NFW::i()->cfg['cookie']['name'], base64_encode($cookie['id'] . '|' . $cookie['password'] . '|' . $expire . '|' . sha1($cookie['salt'] . $cookie['password'] . self::hash($expire, $cookie['salt']))), $expire, NFW::i()->cfg['cookie']['path'] . '; HttpOnly', NFW::i()->cfg['cookie']['domain'], NFW::i()->cfg['cookie']['secure']);
+        setcookie(
+            NFW::i()->cfg['cookie']['name'],
+            base64_encode($cookie['id'] . '|' . $cookie['password'] . '|' . $expire . '|' . sha1($cookie['salt'] . $cookie['password'] . self::hash($expire, $cookie['salt']))),
+            [
+                'expires' => $expire,
+                'path' => NFW::i()->cfg['cookie']['path'],
+                'domain' => NFW::i()->cfg['cookie']['domain'],
+                'secure' => NFW::i()->cfg['cookie']['secure'],
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]
+        );
 
         return true;
     }

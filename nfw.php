@@ -443,18 +443,15 @@ class NFW {
         return $result;
     }
 
-    // Set COOKIE
     function setCookie($name, $value, $expire = 0) {
-        // Enable sending of a P3P header
-        header('P3P: CP="CUR ADM"');
-        setcookie(
-            $name,
-            $value,
-            $expire,
-            $this->cfg['cookie']['path'],
-            $this->cfg['cookie']['domain'],
-            $this->cfg['cookie']['secure'],
-            true);
+        setcookie($name, $value, [
+            'expires' => $expire,
+            'path' => $this->cfg['cookie']['path'],
+            'domain' => $this->cfg['cookie']['domain'],
+            'secure' => $this->cfg['cookie']['secure'],
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
     }
 
     function registerFunction($functionPath = '') {
