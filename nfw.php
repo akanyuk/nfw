@@ -393,7 +393,7 @@ class NFW {
             logs::write(logs::KIND_LOGIN);
 
             // Долгая операция. Лучше сделать один раз заранее. Здесь самое место (?)
-            NFW::i()->registerResource('icons');
+            $this->registerResource('icons');
 
             $this->loginSuccess();
         }
@@ -403,11 +403,9 @@ class NFW {
             $this->user = $account;
             $this->user['is_guest'] = false;
         }
-
-        return;
     }
 
-    // After succesfully logined
+    // After successful logined
     function loginSuccess() {
         $this->renderJSON(array('result' => 'succes'));
     }
