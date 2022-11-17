@@ -10,6 +10,10 @@ class media extends active_record {
     const MAX_FILE_SIZE = 2097152;             // Default MAX_FILE_SIZE # 2Mb
     const MAX_SESSION_SIZE = 10485760;         // Default MAX_SESSION_SIZE # 10Mb
 
+    private $availableIcons = array(
+        'doc', 'docx', 'gif', 'jpeg', 'jpg', 'pdf', 'png', 'rar', 'txt', 'zip',
+    );
+
     protected $media_controller = 'media';                  // Path for controller (making url-addresses)
     protected $storage_path = 'media';                      // Path for 'filesystem' storage
     protected $secure_storage_path = 'var/protected_media';
@@ -125,7 +129,7 @@ class media extends active_record {
         }
     }
 
-    protected function formatRecord($record, $options = array()) {
+    protected function formatRecord($record) {
         $lang_media = NFW::i()->getLang('media');
 
         // Filesize str
@@ -142,11 +146,10 @@ class media extends active_record {
         $record['extension'] = isset($path_parts['extension']) ? $path_parts['extension'] : '';
 
         // icons
-        if (!isset($options['skipLoadIcons']) || !$options['skipLoadIcons']) {
-            $record['icons']['16x16'] = file_exists($this->assets_path . '/icons/16x16/mimetypes/' . $record['extension'] . '.png') ? NFW::i()->absolute_path . '/assets/icons/16x16/mimetypes/' . $record['extension'] . '.png' : NFW::i()->absolute_path . '/assets/icons/16x16/mimetypes/unknown.png';
-            $record['icons']['32x32'] = file_exists($this->assets_path . '/icons/32x32/mimetypes/' . $record['extension'] . '.png') ? NFW::i()->absolute_path . '/assets/icons/32x32/mimetypes/' . $record['extension'] . '.png' : NFW::i()->absolute_path . '/assets/icons/32x32/mimetypes/unknown.png';
-            $record['icons']['64x64'] = file_exists($this->assets_path . '/icons/64x64/mimetypes/' . $record['extension'] . '.png') ? NFW::i()->absolute_path . '/assets/icons/64x64/mimetypes/' . $record['extension'] . '.png' : NFW::i()->absolute_path . '/assets/icons/64x64/mimetypes/unknown.png';
-        }
+        $icon = in_array($record['extension'], $this->availableIcons) ? $record['extension'] . '.png' : 'unknown.png';
+        $record['icons']['16x16'] = NFW::i()->absolute_path . '/assets/icons/16x16/mimetypes/' . $icon;
+        $record['icons']['32x32'] = NFW::i()->absolute_path . '/assets/icons/32x32/mimetypes/' . $icon;
+        $record['icons']['64x64'] = NFW::i()->absolute_path . '/assets/icons/64x64/mimetypes/' . $icon;
 
         // mime_type
         $mimetypes = array(
@@ -734,12 +737,8 @@ class media extends active_record {
         $files = array();
         $load_data = isset($options['load_data']) && $options['load_data'];
 
-        $formatRecordOptions = array(
-            'skipLoadIcons' => isset($options['skipLoadIcons']) ? $options['skipLoadIcons'] : false,
-        );
-
         while ($cur_file = NFW::i()->db->fetch_assoc($result)) {
-            $cur_file = $this->formatRecord($cur_file, $formatRecordOptions);
+            $cur_file = $this->formatRecord($cur_file);
 
             if ($load_data) {
                 $this->loadData($cur_file);
