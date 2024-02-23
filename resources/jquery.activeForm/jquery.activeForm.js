@@ -134,6 +134,10 @@ $.fn.activeForm = function(options) {
 					alert(e);
 				}
 			});
+
+			if (optScrollToError !== false && scrollToError !== false) {
+				$('html, body').animate({ scrollTop: scrollToError }, 500);
+			}
 		},
 		'success': function(response) {
 			form.trigger('cleanErrors');
