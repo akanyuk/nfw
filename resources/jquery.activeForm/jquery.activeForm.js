@@ -19,20 +19,18 @@ $.fn.activeForm = function(options) {
 	
 	// Datepicker
 	form.find('input[data-datepicker]').each(function(){
-		var dp = $(this);
-		
-		var container = dp.closest('div');
-		var name = dp.attr('name');
-		var sFormat = 'dd.mm.yyyy';
-		var sPlaceholder = 'dd.mm.yyyy';
-		var iMinView = 2;
-		var bWithTime = false;
-		
-		if (dp.data('withtime') == '1') {
+		const dp = $(this);
+
+		const container = dp.closest('div');
+		const name = dp.attr('name');
+		let sFormat = 'dd.mm.yyyy';
+		let sPlaceholder = 'dd.mm.yyyy';
+		let iMinView = 2;
+
+		if (dp.data('withtime') === '1') {
 			sFormat = 'dd.mm.yyyy hh:ii';
 			sPlaceholder = 'dd.mm.yyyy hh:ss';
 			iMinView = 0;
-			bWithTime = true;
 		}
 
 		dp.attr({ 'placeholder': sPlaceholder }).removeAttr('name');
@@ -44,8 +42,8 @@ $.fn.activeForm = function(options) {
 			'todayHighlight': true,
 			'format': sFormat,
 			'minView': iMinView,
-			'weekStart': container.data('language') == 'English' ? 0 : 1,
-			'language': container.data('language') == 'English' ? 'en' : 'ru',
+			'weekStart': container.data('language') === 'English' ? 0 : 1,
+			'language': container.data('language') === 'English' ? 'en' : 'ru',
 			'startDate': dp.data('startdate'),
 			'endDate': dp.data('enddate')
 		}).on('changeDate', function(e) {
@@ -54,11 +52,11 @@ $.fn.activeForm = function(options) {
 				return;
 			}
 
-		    var TimeZoned = new Date(e.date.setTime(e.date.getTime() + (e.date.getTimezoneOffset() * 60000)));
-		    dp.datetimepicker('setDate', TimeZoned);				
+			const TimeZoned = new Date(e.date.setTime(e.date.getTime() + (e.date.getTimezoneOffset() * 60000)));
+			dp.datetimepicker('setDate', TimeZoned);
 		    container.find('input[name="' + name + '"]').val(TimeZoned.valueOf() / 1000);
-		}).on('updateAltDate', function(e) {
-			var date = dp.datetimepicker('getDate');
+		}).on('updateAltDate', function() {
+			const date = dp.datetimepicker('getDate');
 			date.setTime(date.getTime() - (date.getTimezoneOffset() * 60000));
 		    container.find('input[name="' + name + '"]').val(date.valueOf() / 1000);
 		});
@@ -71,7 +69,7 @@ $.fn.activeForm = function(options) {
 			dp.val('').trigger('changeDate');
 		});
 		
-		if (dp.data('editable') == '1'){
+		if (dp.data('editable') === '1'){
 			dp.on('keyup', function(){
 				dp.trigger('updateAltDate');
 			});
@@ -82,7 +80,7 @@ $.fn.activeForm = function(options) {
 	});	
 	
 	form.bind('cleanErrors', function(){
-		if (typeof(options.cleanErrors) == 'function') {
+		if (typeof(options.cleanErrors) == "function") {
 			result = options.cleanErrors.apply(options);
 			if (result === false) return;
 		}
@@ -112,20 +110,44 @@ $.fn.activeForm = function(options) {
 				return options.beforeSubmit.apply(options, [a,f,o]);
 			}
 		},
+		error: function (response) {
+			if (typeof(options.error) == 'function') {
+				const result = options.error.apply(options, [response]);
+				if (result === false) {
+					return;
+				}
+			}
+
+			const optScrollToError = !(typeof (options.scrollToError) != 'undefined' && options.scrollToError === false);
+			let scrollToError = false;
+
+			$.each(response['responseJSON']['errors'], function (i, e) {
+				if (form.find('[data-active-container="'+i+'"]').length) {
+					form.find('[data-active-container="'+i+'"]').addClass('has-error');
+					form.find('[data-active-container="'+i+'"]').find('*[class="help-block"]').html(e);
+
+					if (scrollToError === false) {
+						scrollToError = form.find('[data-active-container="'+i+'"]').offset().top - 128;
+					}
+				}
+				else {
+					alert(e);
+				}
+			});
+		},
 		'success': function(response) {
 			form.trigger('cleanErrors');
 			
-			if (response && response.result && response.result == 'error') {
+			if (response && response.result && response.result === 'error') {
 				if (typeof(options.error) == 'function') {
-					var result = options.error.apply(options, [response]);
+					const result = options.error.apply(options, [response]);
 					if (result === false) return;
 				}
 				
 				if (typeof(response.errors) == 'object') {
-					
-					var optScrollToError = typeof(options.scrollToError) != 'undefined' && options.scrollToError === false ? false : true;
-					var scrollToError = false;
-					
+					const optScrollToError = !(typeof (options.scrollToError) != 'undefined' && options.scrollToError === false);
+					let scrollToError = false;
+
 					$.each(response.errors, function(i, e) {
 						if (form.find('[data-active-container="'+i+'"]').length) {
 							form.find('[data-active-container="'+i+'"]').addClass('has-error');
