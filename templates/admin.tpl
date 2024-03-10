@@ -60,7 +60,7 @@ body { padding-top: 60px; }
 <body>
 <nav class="navbar navbar-default navbar-fixed-top navbar-inverse">
 	<div class="container-fluid">
-      	<div class="hidden-sm hidden-md hidden-lg">
+      	<div class="hidden-md hidden-lg">
       		<div class="pull-right">
       			<a class="navbar-brand" href="/" title="Frontend"><span class="glyphicon glyphicon-home"></span></a>
       		</div>
@@ -79,7 +79,7 @@ body { padding-top: 60px; }
 			<?php endif; ?>
 		</div>
 	
-		<div class="hidden-xs">
+		<div class="hidden-xs hidden-sm">
 			<ul class="nav navbar-nav">
 <?php $has_active = false; foreach ($top_menu as $m) {
 	if (!$has_active && page_is($m['url'])) {
@@ -95,7 +95,7 @@ body { padding-top: 60px; }
 			</ul> 
       	</div>
       	
-      	<div class="hidden-xs">
+      	<div class="hidden-xs hidden-sm">
       		<div class="navbar-right frontend"><a href="/" title="Frontend"></a></div>
 			<p class="navbar-text navbar-right"><?php echo NFW::i()->lang['LoggedAs']?> <a class="navbar-link" href="<?php echo NFW::i()->base_path?>admin/profile"><strong><?php echo htmlspecialchars(NFW::i()->user['username'])?></strong></a>. <a class="navbar-link" href="?action=logout"><?php echo NFW::i()->lang['Logout']?></a>.</p>
 		</div>
