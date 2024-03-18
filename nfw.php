@@ -644,14 +644,7 @@ class NFW {
         return ob_get_clean();
     }
 
-    function display($tpl, $isContentRendered = false) {
-        $content = $isContentRendered ? strval($tpl) : $this->fetch($this->findTemplatePath($tpl));
-
-        // Check if jQuery required by template (only for normal output)
-        if (!$isContentRendered && (strstr($content, '$(document).ready') || strstr($content, '$(function()'))) {
-            $this->registerResource('jquery', array('atStart' => true));
-        }
-
+    function renderPage($content) {
         if (defined('NFW_SEPARATED_RESOURCES')) {
             foreach (array_unique(array_reverse($this->_head_assets)) as $filename) {
                 if ($cur_assets = $this->assets($filename, true)) {
@@ -712,13 +705,26 @@ class NFW {
             }
         }
 
+        return $content;
+    }
+
+    function display($tpl, $isContentRendered = false) {
+        $content = $isContentRendered ? strval($tpl) : $this->fetch($this->findTemplatePath($tpl));
+
+        // Check if jQuery required by template (only for normal output)
+        if (!$isContentRendered && (strstr($content, '$(document).ready') || strstr($content, '$(function()'))) {
+            $this->registerResource('jquery', array('atStart' => true));
+        }
+
+        $result = $this->renderPage($content);
+
         // Calculate script generation time
         if (defined('NFW_LOG_GENERATED_TIME')) {
             $str = 'Generated in ' . sprintf('%.3f', $this->microtime() - $this->_start_execution) . ' seconds, ' . $this->db->get_num_queries() . ' queries executed';
             if (class_exists('ChromePhp')) {
                 ChromePhp::info($str);
             } else {
-                $content = str_ireplace('</html>', '</html>' . "\n\n" . '<!--' . $str . '-->', $content);
+                $result = str_ireplace('</html>', '</html>' . "\n\n" . '<!--' . $str . '-->', $result);
             }
         }
 
@@ -730,8 +736,11 @@ class NFW {
         }
 
         // If a database connection was established (before this error) we close it
-        if ($this->db) $this->db->close();
-        exit (trim($content));
+        if ($this->db) {
+            $this->db->close();
+        }
+
+        exit (trim($result));
     }
 
     function findTemplatePath($filename, $class = '') {
