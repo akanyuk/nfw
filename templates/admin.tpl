@@ -25,11 +25,9 @@ if ($page['is_welcome']) {
 if (!empty(NFW::i()->breadcrumb)) {
 	ob_start();
 
-	echo '<div class="breadcrumb-status-xs">'.NFW::i()->breadcrumb_status.'</div>';
+    echo '<div class="breadcrumb-container">';
 	echo '<ul class="breadcrumb">';
-	echo '<div class="hidden-xs"><div class="pull-right">'.NFW::i()->breadcrumb_status.'</div></div>';
-	
-	foreach (NFW::i()->breadcrumb as $b) { 
+	foreach (NFW::i()->breadcrumb as $b) {
 		if (!isset($b['url']) || !$b['url']) {
 			echo '<li class="active">'.$b['desc'].'</li>';
 			continue;
@@ -40,8 +38,10 @@ if (!empty(NFW::i()->breadcrumb)) {
 	}
 
 	echo '</ul>';
- 	
-	$page['content'] = ob_get_clean().$page['content'];
+    echo NFW::i()->breadcrumb_status ? '<div class="breadcrumb-status">'.NFW::i()->breadcrumb_status.'</div>' : '';
+    echo '</div>';
+
+    $page['content'] = ob_get_clean().$page['content'];
 }
 ?>
 <!DOCTYPE html>

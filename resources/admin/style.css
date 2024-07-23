@@ -1,15 +1,44 @@
-@media (max-width: 768px) {
-	.breadcrumb-status-xs { margin-bottom: 10px; }
-	.breadcrumb { white-space: nowrap; overflow: scroll; }
+.breadcrumb-container {
+    display: flex;
+    justify-content: space-between;
 }
 
-@media (min-width: 769px) {
-	.breadcrumb-status-xs { display: none; }
+.breadcrumb {
+    overflow: scroll;
+    white-space: nowrap;
+    margin-right: 10px;
 }
 
-.settings {	display: table;	}
-.settings .record, .settings .header, .settings .footer { display:table-row; }
-.settings .record:nth-child(even) { background-color: #E2E4FF; }
-.settings .cell { display: table-cell; padding: 5px 2px; vertical-align: middle; }
-.settings .header .cell, .settings .footer .cell { font-size: 90%; font-weight: bold; }
-.settings .icon { cursor: default; }
+.breadcrumb-status {
+    overflow: scroll;
+    white-space: nowrap;
+    margin-left: 10px;
+    margin-top: 5px;
+}
+
+.settings {
+    display: table;
+}
+
+.settings .record, .settings .header, .settings .footer {
+    display: table-row;
+}
+
+.settings .record:nth-child(even) {
+    background-color: #E2E4FF;
+}
+
+.settings .cell {
+    display: table-cell;
+    padding: 5px 2px;
+    vertical-align: middle;
+}
+
+.settings .header .cell, .settings .footer .cell {
+    font-size: 90%;
+    font-weight: bold;
+}
+
+.settings .icon {
+    cursor: default;
+}
