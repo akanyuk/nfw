@@ -222,7 +222,7 @@ class users extends active_record {
             'SELECT' => isset($options['SELECT']) && !empty($options['SELECT']) ? implode(', ', $options['SELECT']) : 'u.*',
             'FROM' => $this->db_table . ' AS u',
             'WHERE' => implode(' AND ', $where),
-            'ORDER BY' => isset($options['ORDER BY']) ? $options['ORDER BY'] : 'u.id'
+            'ORDER BY' => isset($options['ORDER BY']) ? $options['ORDER BY'] : 'u.id DESC'
         );
         if (!$result = NFW::i()->db->query_build($query)) {
             $this->error('Unable to fetch records', __FILE__, __LINE__, NFW::i()->db->error());
