@@ -20,6 +20,7 @@ ob_start();
 		"filesize_str": "<?php echo $a['filesize_str']?>",
 		"icon": "<?php echo $a['icons']['16x16']?>",
 		"icon_medium": "<?php echo $a['icons']['32x32']?>",
+        "icon_large": "<?php echo $a['icons']['64x64']?>",
 		"url": "<?php echo $a['url']?>",
 		"filename": <?php echo json_encode($a['filename'])?>,
 		"basename": <?php echo json_encode($a['basename'])?>,
