@@ -30,6 +30,10 @@ class media extends active_record {
     function __construct($record_id = false, $params = array()) {
         $this->media_controller = isset(NFW::i()->cfg['media']['media_controler']) ? NFW::i()->cfg['media']['media_controler'] : $this->media_controller;
 
+        if (isset(NFW::i()->cfg['media']['availableIcons'])) {
+            $this->availableIcons = array_merge($this->availableIcons, NFW::i()->cfg['media']['availableIcons']);
+        }
+
         if (isset(NFW::i()->cfg['media']['storage_full_path'])) {
             $this->storage_path = NFW::i()->cfg['media']['storage_full_path'];
         } else if (isset(NFW::i()->cfg['media']['storage_path']) && defined('PROJECT_ROOT')) {
