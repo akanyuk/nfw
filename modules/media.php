@@ -1017,7 +1017,9 @@ class media extends active_record {
     function actionRemove() {
         $this->error_report_type = 'plain';
 
-        if (!$this->load($_POST['file_id'])) return false;
+        if (!$this->load($_POST['file_id'])) {
+            return false;
+        }
 
         // Для временных файлов проверка прав не нужна, т.к. если смогли его получить, значит являемся его автором и имеем право удалить.
         // Для перманентных файлов производим проверку.
@@ -1026,10 +1028,23 @@ class media extends active_record {
             return false;
         }
 
+        $session_id = $this->calculateSessionId($this->record['owner_class'], $this->record['owner_id'] ?: 0);
+        if (!$this->loadSession($session_id)) {
+            $this->error('Loading session error', __FILE__, __LINE__);
+            return false;
+        }
+
         // Store variables before `delete`
         $basename = $this->record['basename'];
         $owner_id = $this->record['owner_id'];
         $owner_class = $this->record['owner_class'];
+
+        if (isset($this->session['after_delete']) && $this->session['after_delete']) {
+            NFW::i()->registerFunction($this->session['after_delete']);
+            if (function_exists($this->session['after_delete'])) {
+                call_user_func($this->session['after_delete'], $this, $this->db_table);
+            }
+        }
 
         $this->delete();
         logs::write($basename, self::LOGS_MEDIA_REMOVE, $owner_id . ':' . $owner_class);
