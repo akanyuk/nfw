@@ -435,8 +435,14 @@ class NFW {
     }
 
     function unserializeArray($string) {
+        if ($string === null) {
+            return array();
+        }
+
         $result = unserialize(base64_decode($string));
-        if (!$result) $result = array();
+        if (!$result) {
+            $result = array();
+        }
 
         return $result;
     }

@@ -1,11 +1,7 @@
 <?php
-// $Id$
 
 /**
- * Абстрактный класс active_record.
- *
- * @copyright 2009-2018 Andrey nyuk Marinov
- * @author Andrey nyuk Marinov (aka.nyuk@gmail.com)
+ * @desc active_record abstract class
  */
 
 abstract class active_record extends base_module {
@@ -19,7 +15,7 @@ abstract class active_record extends base_module {
 			$this->db_table = get_class($this);
 		}
 		
-		// Fill undefuned attributes
+		// Fill undefined attributes
 		foreach ($this->attributes as &$attr) {
 			if (!isset($attr['required'])) $attr['required'] = false;
 			if (!isset($attr['unique'])) $attr['unique'] = false;
@@ -31,12 +27,14 @@ abstract class active_record extends base_module {
 		}
 		
 		// Fill new record default values
-		$this->record['id'] = 0;
-		foreach ($this->attributes as $varname=>$attributes) {
-			$this->record[$varname] = isset($attributes['default']) ? $attributes['default'] : null;
+		$this->record = array(
+            'id' => 0
+        );
+		foreach ($this->attributes as $key=>$attributes) {
+			$this->record[$key] = is_array($attributes) && isset($attributes['default']) ? $attributes['default'] : null;
 		}
 		
-		return parent::__construct($record_id);
+		return parent::__construct();
    	}
 
    	/**

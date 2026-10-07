@@ -22,7 +22,8 @@ class _tmbGenerator {
 	var $error = false;
 	var $media_class = 'media';
 	var $format = 'png';
-    private $request;
+    var $options = array();
+
     /**
      * @var int|mixed
      */
@@ -41,7 +42,6 @@ class _tmbGenerator {
     private $tmb_exist;
 
     function __construct($request, $tmb_width = 0, $tmb_height = 0, $options = array()) {
-		$this->request = $request; // Saving original request
 		$this->tmb_width  = $tmb_width;
 		$this->tmb_height = $tmb_height;
 		$this->options = $options;

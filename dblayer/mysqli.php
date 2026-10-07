@@ -241,8 +241,9 @@ class DBLayer
 	{
 		if ($this->link_id)
 		{
-			if ($this->query_result)
-				@mysqli_free_result($this->query_result);
+			if (gettype($this->query_result) == "object" && get_class($this->query_result) == "mysqli_result") {
+                @mysqli_free_result($this->query_result);
+            }
 
 			return @mysqli_close($this->link_id);
 		}
